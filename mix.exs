@@ -29,8 +29,8 @@ defmodule Cloudflareq.MixProject do
   defp docs do
     [
       groups_for_modules: [
-        Clients: [Cloudflareq.D1],
-        Structures: [Cloudflareq.D1.Result, Cloudflareq.Database],
+        Clients: [Cloudflareq.D1, Cloudflareq.R2],
+        Structures: [Cloudflareq.D1.Result, Cloudflareq.Database, Cloudflareq.R2.Bucket, Cloudflareq.R2.TempCredentials],
         Errors: [Cloudflareq.Error]
       ]
     ]
@@ -39,6 +39,7 @@ defmodule Cloudflareq.MixProject do
   defp deps do
     [
       {:req, "~> 0.5"},
+      {:req_s3, "~> 0.2", optional: true},
       {:plug, "~> 1.0", only: :test},
       {:ex_doc, ">= 0.0.0", only: :docs, runtime: false}
     ]
