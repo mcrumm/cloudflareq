@@ -29,8 +29,8 @@ defmodule Cloudflareq.MixProject do
   defp docs do
     [
       groups_for_modules: [
-        Clients: [Cloudflareq.D1, Cloudflareq.R2],
-        Structures: [Cloudflareq.D1.Result, Cloudflareq.Database, Cloudflareq.R2.Bucket, Cloudflareq.R2.TempCredentials],
+        Clients: [Cloudflareq.D1, Cloudflareq.R2, Cloudflareq.Workers],
+        Structures: [Cloudflareq.D1.Result, Cloudflareq.Database, Cloudflareq.R2.Bucket, Cloudflareq.R2.TempCredentials, Cloudflareq.Workers.Script],
         Errors: [Cloudflareq.Error]
       ]
     ]
