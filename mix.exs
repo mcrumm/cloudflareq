@@ -28,6 +28,10 @@ defmodule Cloudflareq.MixProject do
 
   defp docs do
     [
+      extras: ["livebooks/clients.livemd"],
+      groups_for_extras: [
+        Guides: ["livebooks/clients.livemd"]
+      ],
       groups_for_modules: [
         Clients: [Cloudflareq.D1, Cloudflareq.R2, Cloudflareq.Workers, Cloudflareq.Queues],
         Structures: [
