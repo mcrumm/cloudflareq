@@ -74,6 +74,38 @@ defmodule Cloudflareq.Workers do
   end
 
   @doc """
+  Returns a `Stream` that lazily paginates through all Workers scripts.
+
+  Each element is a `%Cloudflareq.Workers.Script{}` struct. On error,
+  `{:error, reason}` is emitted as the final element.
+
+  ## Options
+
+    * `:per_page` - number of results per page.
+
+  ## Examples
+
+      Cloudflareq.Workers.stream_scripts(req) |> Enum.to_list()
+  """
+  def stream_scripts(req, opts \\ []) do
+    Cloudflareq.Stream.pages(fn cursor ->
+      page = cursor || 1
+      fetch_scripts_page(req, Keyword.put(opts, :page, page))
+    end)
+  end
+
+  defp fetch_scripts_page(req, opts) do
+    {query_opts, opts} = Keyword.split(opts, [:page, :per_page])
+    opts = Keyword.merge(opts, workers_operation: {:list_scripts_page, query_opts})
+
+    case Req.request(req, opts) do
+      {:ok, %Req.Response{body: {:error, _} = error}} -> error
+      {:ok, %Req.Response{body: %{scripts: scripts, next_page: next}}} -> {:ok, {scripts, next}}
+      {:error, exception} -> {:error, exception}
+    end
+  end
+
+  @doc """
   Gets the content of a Workers script.
 
   Returns `{:ok, content}` where `content` is the raw script binary,
@@ -196,6 +228,17 @@ defmodule Cloudflareq.Workers do
     Req.merge(req, method: :get, url: workers_url(req, ""))
   end
 
+  defp configure_request(req, {:list_scripts_page, query_opts}) do
+    params =
+      query_opts
+      |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+      |> Map.new()
+
+    opts = [method: :get, url: workers_url(req, "")]
+    opts = if map_size(params) > 0, do: Keyword.put(opts, :params, params), else: opts
+    Req.merge(req, opts)
+  end
+
   defp configure_request(req, {:get_script_content, script_name}) do
     Req.merge(req,
       method: :get,
@@ -284,9 +327,11 @@ defmodule Cloudflareq.Workers do
         {request, response}
 
       _ when is_map(body) ->
+        result_info = body["result_info"]
+
         case Cloudflareq.unwrap_response(body) do
           {:ok, result} ->
-            transformed = transform_result(request, result)
+            transformed = transform_result(request, result, result_info)
             {request, %{response | body: transformed}}
 
           {:error, errors} ->
@@ -309,14 +354,21 @@ defmodule Cloudflareq.Workers do
     {request, response}
   end
 
-  defp transform_result(request, result) when is_list(result) do
+  defp transform_result(request, result, result_info) when is_list(result) do
     case request.options[:workers_operation] do
-      :list_scripts -> Enum.map(result, &Cloudflareq.Workers.Script.new/1)
-      _ -> result
+      :list_scripts ->
+        Enum.map(result, &Cloudflareq.Workers.Script.new/1)
+
+      {:list_scripts_page, _} ->
+        scripts = Enum.map(result, &Cloudflareq.Workers.Script.new/1)
+        %{scripts: scripts, next_page: next_page(result_info)}
+
+      _ ->
+        result
     end
   end
 
-  defp transform_result(request, result) when is_map(result) do
+  defp transform_result(request, result, _result_info) when is_map(result) do
     case request.options[:workers_operation] do
       {:upload_script, _, _, _} -> Cloudflareq.Workers.Script.new(result)
       {:put_script_content, _, _} -> Cloudflareq.Workers.Script.new(result)
@@ -324,5 +376,11 @@ defmodule Cloudflareq.Workers do
     end
   end
 
-  defp transform_result(_request, result), do: result
+  defp transform_result(_request, result, _result_info), do: result
+
+  defp next_page(%{"page" => page, "total_count" => total, "per_page" => per_page})
+       when page * per_page < total,
+       do: page + 1
+
+  defp next_page(_), do: nil
 end

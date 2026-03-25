@@ -462,4 +462,137 @@ defmodule Cloudflareq.QueuesTest do
 
     assert {:ok, [%Cloudflareq.Queues.Queue{queue_name: "my-queue"}]} = Cloudflareq.Queues.list_queues(req)
   end
+
+  test "stream_queues streams across multiple pages" do
+    queue_a = %{@queue_response | "queue_id" => "q-a", "queue_name" => "queue-a"}
+    queue_b = %{@queue_response | "queue_id" => "q-b", "queue_name" => "queue-b"}
+
+    Req.Test.stub(__MODULE__, fn conn ->
+      params = Plug.Conn.fetch_query_params(conn).query_params
+
+      {queues, result_info} =
+        case params["page"] do
+          "1" ->
+            {[queue_a], %{"page" => 1, "per_page" => 1, "total_count" => 2, "count" => 1}}
+
+          "2" ->
+            {[queue_b], %{"page" => 2, "per_page" => 1, "total_count" => 2, "count" => 1}}
+        end
+
+      Req.Test.json(conn, %{
+        "success" => true,
+        "errors" => [],
+        "messages" => [],
+        "result" => queues,
+        "result_info" => result_info
+      })
+    end)
+
+    req =
+      Cloudflareq.Queues.new(
+        cf_account_id: "test-account",
+        cf_api_token: "test-token",
+        plug: {Req.Test, __MODULE__}
+      )
+
+    queues = Cloudflareq.Queues.stream_queues(req, per_page: 1) |> Enum.to_list()
+    assert [%Cloudflareq.Queues.Queue{queue_name: "queue-a"}, %Cloudflareq.Queues.Queue{queue_name: "queue-b"}] = queues
+  end
+
+  test "stream_queues with single page" do
+    Req.Test.stub(__MODULE__, fn conn ->
+      Req.Test.json(conn, %{
+        "success" => true,
+        "errors" => [],
+        "messages" => [],
+        "result" => [@queue_response],
+        "result_info" => %{"page" => 1, "per_page" => 20, "total_count" => 1, "count" => 1}
+      })
+    end)
+
+    req =
+      Cloudflareq.Queues.new(
+        cf_account_id: "test-account",
+        cf_api_token: "test-token",
+        plug: {Req.Test, __MODULE__}
+      )
+
+    assert [%Cloudflareq.Queues.Queue{queue_name: "my-queue"}] =
+             Cloudflareq.Queues.stream_queues(req) |> Enum.to_list()
+  end
+
+  test "stream_queues halts on error" do
+    Req.Test.stub(__MODULE__, fn conn ->
+      params = Plug.Conn.fetch_query_params(conn).query_params
+
+      case params["page"] do
+        "1" ->
+          Req.Test.json(conn, %{
+            "success" => true,
+            "errors" => [],
+            "messages" => [],
+            "result" => [@queue_response],
+            "result_info" => %{"page" => 1, "per_page" => 1, "total_count" => 2, "count" => 1}
+          })
+
+        "2" ->
+          conn
+          |> Plug.Conn.put_status(500)
+          |> Req.Test.json(%{
+            "success" => false,
+            "errors" => [%{"code" => 10000, "message" => "internal error"}],
+            "messages" => [],
+            "result" => nil
+          })
+      end
+    end)
+
+    req =
+      Cloudflareq.Queues.new(
+        cf_account_id: "test-account",
+        cf_api_token: "test-token",
+        plug: {Req.Test, __MODULE__}
+      )
+
+    results = Cloudflareq.Queues.stream_queues(req, per_page: 1) |> Enum.to_list()
+    assert [%Cloudflareq.Queues.Queue{}, {:error, [%Cloudflareq.Error{}]}] = results
+  end
+
+  test "stream_consumers streams across multiple pages" do
+    consumer_a = %{@consumer_response | "consumer_id" => "c-a"}
+    consumer_b = %{@consumer_response | "consumer_id" => "c-b"}
+
+    Req.Test.stub(__MODULE__, fn conn ->
+      params = Plug.Conn.fetch_query_params(conn).query_params
+
+      {consumers, result_info} =
+        case params["page"] do
+          "1" ->
+            {[consumer_a], %{"page" => 1, "per_page" => 1, "total_count" => 2, "count" => 1}}
+
+          "2" ->
+            {[consumer_b], %{"page" => 2, "per_page" => 1, "total_count" => 2, "count" => 1}}
+        end
+
+      Req.Test.json(conn, %{
+        "success" => true,
+        "errors" => [],
+        "messages" => [],
+        "result" => consumers,
+        "result_info" => result_info
+      })
+    end)
+
+    req =
+      Cloudflareq.Queues.new(
+        cf_account_id: "test-account",
+        cf_api_token: "test-token",
+        plug: {Req.Test, __MODULE__}
+      )
+
+    consumers = Cloudflareq.Queues.stream_consumers(req, "q-1", per_page: 1) |> Enum.to_list()
+
+    assert [%Cloudflareq.Queues.Consumer{consumer_id: "c-a"}, %Cloudflareq.Queues.Consumer{consumer_id: "c-b"}] =
+             consumers
+  end
 end

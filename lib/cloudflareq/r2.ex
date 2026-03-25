@@ -91,6 +91,31 @@ defmodule Cloudflareq.R2 do
   end
 
   @doc """
+  Returns a `Stream` that lazily paginates through all R2 buckets.
+
+  Each element is a `%Cloudflareq.R2.Bucket{}` struct. On error,
+  `{:error, reason}` is emitted as the final element.
+
+  Accepts the same filtering options as `list_buckets/2`.
+
+  ## Examples
+
+      Cloudflareq.R2.stream_buckets(req) |> Enum.to_list()
+      Cloudflareq.R2.stream_buckets(req, per_page: 10) |> Stream.take(50) |> Enum.to_list()
+  """
+  def stream_buckets(req, opts \\ []) do
+    Cloudflareq.Stream.pages(fn cursor ->
+      opts = if cursor, do: Keyword.put(opts, :cursor, cursor), else: opts
+
+      case list_buckets(req, opts) do
+        {:ok, %{buckets: buckets, cursor: next}} -> {:ok, {buckets, next}}
+        {:ok, {:error, _} = error} -> error
+        {:error, reason} -> {:error, reason}
+      end
+    end)
+  end
+
+  @doc """
   Creates a new R2 bucket with the given `name`.
 
   Returns `{:ok, bucket}` with the created `Cloudflareq.R2.Bucket` struct,

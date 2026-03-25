@@ -409,4 +409,101 @@ defmodule Cloudflareq.D1Test do
 
     Cloudflareq.D1.query(req, "SELECT 1")
   end
+
+  test "stream_databases streams across multiple pages" do
+    Req.Test.stub(__MODULE__, fn conn ->
+      params = Plug.Conn.fetch_query_params(conn).query_params
+
+      {databases, result_info} =
+        case params["page"] do
+          "1" ->
+            {[%{"uuid" => "db-1", "name" => "first", "version" => "production", "num_tables" => 1, "file_size" => 1024, "created_at" => "2024-01-01T00:00:00Z"}],
+             %{"page" => 1, "per_page" => 1, "total_count" => 2, "count" => 1}}
+
+          "2" ->
+            {[%{"uuid" => "db-2", "name" => "second", "version" => "production", "num_tables" => 2, "file_size" => 2048, "created_at" => "2024-02-01T00:00:00Z"}],
+             %{"page" => 2, "per_page" => 1, "total_count" => 2, "count" => 1}}
+        end
+
+      Req.Test.json(conn, %{
+        "success" => true,
+        "errors" => [],
+        "messages" => [],
+        "result" => databases,
+        "result_info" => result_info
+      })
+    end)
+
+    req =
+      Cloudflareq.D1.new(
+        cf_account_id: "test-account",
+        cf_api_token: "test-token",
+        plug: {Req.Test, __MODULE__}
+      )
+
+    databases = Cloudflareq.D1.stream_databases(req, per_page: 1) |> Enum.to_list()
+    assert [%Cloudflareq.Database{name: "first"}, %Cloudflareq.Database{name: "second"}] = databases
+  end
+
+  test "stream_databases with single page" do
+    Req.Test.stub(__MODULE__, fn conn ->
+      Req.Test.json(conn, %{
+        "success" => true,
+        "errors" => [],
+        "messages" => [],
+        "result" => [
+          %{"uuid" => "db-1", "name" => "only", "version" => "production", "num_tables" => 1, "file_size" => 1024, "created_at" => "2024-01-01T00:00:00Z"}
+        ],
+        "result_info" => %{"page" => 1, "per_page" => 20, "total_count" => 1, "count" => 1}
+      })
+    end)
+
+    req =
+      Cloudflareq.D1.new(
+        cf_account_id: "test-account",
+        cf_api_token: "test-token",
+        plug: {Req.Test, __MODULE__}
+      )
+
+    assert [%Cloudflareq.Database{name: "only"}] = Cloudflareq.D1.stream_databases(req) |> Enum.to_list()
+  end
+
+  test "stream_databases halts on error" do
+    Req.Test.stub(__MODULE__, fn conn ->
+      params = Plug.Conn.fetch_query_params(conn).query_params
+
+      case params["page"] do
+        "1" ->
+          Req.Test.json(conn, %{
+            "success" => true,
+            "errors" => [],
+            "messages" => [],
+            "result" => [
+              %{"uuid" => "db-1", "name" => "first", "version" => "production", "num_tables" => 1, "file_size" => 1024, "created_at" => "2024-01-01T00:00:00Z"}
+            ],
+            "result_info" => %{"page" => 1, "per_page" => 1, "total_count" => 2, "count" => 1}
+          })
+
+        "2" ->
+          conn
+          |> Plug.Conn.put_status(400)
+          |> Req.Test.json(%{
+            "success" => false,
+            "errors" => [%{"code" => 7400, "message" => "unauthorized"}],
+            "messages" => [],
+            "result" => nil
+          })
+      end
+    end)
+
+    req =
+      Cloudflareq.D1.new(
+        cf_account_id: "test-account",
+        cf_api_token: "test-token",
+        plug: {Req.Test, __MODULE__}
+      )
+
+    results = Cloudflareq.D1.stream_databases(req, per_page: 1) |> Enum.to_list()
+    assert [%Cloudflareq.Database{name: "first"}, {:error, [%Cloudflareq.Error{}]}] = results
+  end
 end

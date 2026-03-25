@@ -142,6 +142,38 @@ defmodule Cloudflareq.D1 do
   end
 
   @doc """
+  Returns a `Stream` that lazily paginates through all D1 databases.
+
+  Each element is a `%Cloudflareq.Database{}` struct. On error,
+  `{:error, reason}` is emitted as the final element.
+
+  ## Options
+
+    * `:per_page` - number of results per page.
+
+  ## Examples
+
+      Cloudflareq.D1.stream_databases(req) |> Enum.to_list()
+  """
+  def stream_databases(req, opts \\ []) do
+    Cloudflareq.Stream.pages(fn cursor ->
+      page = cursor || 1
+      fetch_databases_page(req, Keyword.put(opts, :page, page))
+    end)
+  end
+
+  defp fetch_databases_page(req, opts) do
+    {query_opts, opts} = Keyword.split(opts, [:page, :per_page])
+    opts = Keyword.merge(opts, d1_operation: {:list_databases_page, query_opts})
+
+    case Req.request(req, opts) do
+      {:ok, %Req.Response{body: {:error, _} = error}} -> error
+      {:ok, %Req.Response{body: %{databases: dbs, next_page: next}}} -> {:ok, {dbs, next}}
+      {:error, exception} -> {:error, exception}
+    end
+  end
+
+  @doc """
   Creates a new D1 database with the given `name`.
 
   Returns `{:ok, database}` with the created database object,
@@ -265,6 +297,17 @@ defmodule Cloudflareq.D1 do
     Req.merge(req, method: :get, url: d1_url(req, ""))
   end
 
+  defp configure_request(req, {:list_databases_page, query_opts}) do
+    params =
+      query_opts
+      |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+      |> Map.new()
+
+    opts = [method: :get, url: d1_url(req, "")]
+    opts = if map_size(params) > 0, do: Keyword.put(opts, :params, params), else: opts
+    Req.merge(req, opts)
+  end
+
   defp configure_request(req, {:create_database, name}) do
     Req.merge(req, method: :post, url: d1_url(req, ""), json: %{"name" => name})
   end
@@ -316,9 +359,11 @@ defmodule Cloudflareq.D1 do
 
   defp handle_response({request, %Req.Response{status: status, body: body} = response})
        when status in 200..299 and is_map(body) do
+    result_info = body["result_info"]
+
     case Cloudflareq.unwrap_response(body) do
       {:ok, result} ->
-        transformed = transform_result(request, result)
+        transformed = transform_result(request, result, result_info)
         {request, %{response | body: transformed}}
 
       {:error, errors} ->
@@ -337,7 +382,7 @@ defmodule Cloudflareq.D1 do
     {request, response}
   end
 
-  defp transform_result(request, result) when is_list(result) do
+  defp transform_result(request, result, result_info) when is_list(result) do
     case request.options[:d1_operation] do
       {:query, _, _} ->
         result |> List.first() |> build_result()
@@ -348,12 +393,16 @@ defmodule Cloudflareq.D1 do
       :list_databases ->
         Enum.map(result, &Cloudflareq.Database.new/1)
 
+      {:list_databases_page, _} ->
+        databases = Enum.map(result, &Cloudflareq.Database.new/1)
+        %{databases: databases, next_page: next_page(result_info)}
+
       _ ->
         result
     end
   end
 
-  defp transform_result(request, result) when is_map(result) do
+  defp transform_result(request, result, _result_info) when is_map(result) do
     case request.options[:d1_operation] do
       {:create_database, _} -> Cloudflareq.Database.new(result)
       {:get_database, _} -> Cloudflareq.Database.new(result)
@@ -361,7 +410,13 @@ defmodule Cloudflareq.D1 do
     end
   end
 
-  defp transform_result(_request, result), do: result
+  defp transform_result(_request, result, _result_info), do: result
+
+  defp next_page(%{"page" => page, "total_count" => total, "per_page" => per_page})
+       when page * per_page < total,
+       do: page + 1
+
+  defp next_page(_), do: nil
 
   defp build_result(%{"results" => rows, "meta" => meta} = item) do
     %Cloudflareq.D1.Result{

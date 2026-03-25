@@ -228,4 +228,99 @@ defmodule Cloudflareq.WorkersTest do
 
     assert {:ok, [%Cloudflareq.Workers.Script{id: "my-worker"}]} = Cloudflareq.Workers.list_scripts(req)
   end
+
+  test "stream_scripts streams across multiple pages" do
+    script_a = %{@script_response | "id" => "worker-a"}
+    script_b = %{@script_response | "id" => "worker-b"}
+
+    Req.Test.stub(__MODULE__, fn conn ->
+      params = Plug.Conn.fetch_query_params(conn).query_params
+
+      {scripts, result_info} =
+        case params["page"] do
+          "1" ->
+            {[script_a], %{"page" => 1, "per_page" => 1, "total_count" => 2, "count" => 1}}
+
+          "2" ->
+            {[script_b], %{"page" => 2, "per_page" => 1, "total_count" => 2, "count" => 1}}
+        end
+
+      Req.Test.json(conn, %{
+        "success" => true,
+        "errors" => [],
+        "messages" => [],
+        "result" => scripts,
+        "result_info" => result_info
+      })
+    end)
+
+    req =
+      Cloudflareq.Workers.new(
+        cf_account_id: "test-account",
+        cf_api_token: "test-token",
+        plug: {Req.Test, __MODULE__}
+      )
+
+    scripts = Cloudflareq.Workers.stream_scripts(req, per_page: 1) |> Enum.to_list()
+    assert [%Cloudflareq.Workers.Script{id: "worker-a"}, %Cloudflareq.Workers.Script{id: "worker-b"}] = scripts
+  end
+
+  test "stream_scripts with single page" do
+    Req.Test.stub(__MODULE__, fn conn ->
+      Req.Test.json(conn, %{
+        "success" => true,
+        "errors" => [],
+        "messages" => [],
+        "result" => [@script_response],
+        "result_info" => %{"page" => 1, "per_page" => 20, "total_count" => 1, "count" => 1}
+      })
+    end)
+
+    req =
+      Cloudflareq.Workers.new(
+        cf_account_id: "test-account",
+        cf_api_token: "test-token",
+        plug: {Req.Test, __MODULE__}
+      )
+
+    assert [%Cloudflareq.Workers.Script{id: "my-worker"}] =
+             Cloudflareq.Workers.stream_scripts(req) |> Enum.to_list()
+  end
+
+  test "stream_scripts halts on error" do
+    Req.Test.stub(__MODULE__, fn conn ->
+      params = Plug.Conn.fetch_query_params(conn).query_params
+
+      case params["page"] do
+        "1" ->
+          Req.Test.json(conn, %{
+            "success" => true,
+            "errors" => [],
+            "messages" => [],
+            "result" => [@script_response],
+            "result_info" => %{"page" => 1, "per_page" => 1, "total_count" => 2, "count" => 1}
+          })
+
+        "2" ->
+          conn
+          |> Plug.Conn.put_status(403)
+          |> Req.Test.json(%{
+            "success" => false,
+            "errors" => [%{"code" => 10000, "message" => "forbidden"}],
+            "messages" => [],
+            "result" => nil
+          })
+      end
+    end)
+
+    req =
+      Cloudflareq.Workers.new(
+        cf_account_id: "test-account",
+        cf_api_token: "test-token",
+        plug: {Req.Test, __MODULE__}
+      )
+
+    results = Cloudflareq.Workers.stream_scripts(req, per_page: 1) |> Enum.to_list()
+    assert [%Cloudflareq.Workers.Script{}, {:error, [%Cloudflareq.Error{}]}] = results
+  end
 end

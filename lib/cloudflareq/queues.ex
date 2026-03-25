@@ -74,6 +74,38 @@ defmodule Cloudflareq.Queues do
   end
 
   @doc """
+  Returns a `Stream` that lazily paginates through all queues.
+
+  Each element is a `%Cloudflareq.Queues.Queue{}` struct. On error,
+  `{:error, reason}` is emitted as the final element.
+
+  ## Options
+
+    * `:per_page` - number of results per page.
+
+  ## Examples
+
+      Cloudflareq.Queues.stream_queues(req) |> Enum.to_list()
+  """
+  def stream_queues(req, opts \\ []) do
+    Cloudflareq.Stream.pages(fn cursor ->
+      page = cursor || 1
+      fetch_queues_page(req, Keyword.put(opts, :page, page))
+    end)
+  end
+
+  defp fetch_queues_page(req, opts) do
+    {query_opts, opts} = Keyword.split(opts, [:page, :per_page])
+    opts = Keyword.merge(opts, queues_operation: {:list_queues_page, query_opts})
+
+    case Req.request(req, opts) do
+      {:ok, %Req.Response{body: {:error, _} = error}} -> error
+      {:ok, %Req.Response{body: %{queues: queues, next_page: next}}} -> {:ok, {queues, next}}
+      {:error, exception} -> {:error, exception}
+    end
+  end
+
+  @doc """
   Creates a new queue with the given `name`.
 
   Returns `{:ok, %Cloudflareq.Queues.Queue{}}` or `{:error, reason}`.
@@ -172,6 +204,38 @@ defmodule Cloudflareq.Queues do
     case Req.request(req, opts) do
       {:ok, %Req.Response{body: {:error, _} = error}} -> error
       {:ok, %Req.Response{body: body}} -> {:ok, body}
+      {:error, exception} -> {:error, exception}
+    end
+  end
+
+  @doc """
+  Returns a `Stream` that lazily paginates through consumers for a queue.
+
+  Each element is a `%Cloudflareq.Queues.Consumer{}` struct. On error,
+  `{:error, reason}` is emitted as the final element.
+
+  ## Options
+
+    * `:per_page` - number of results per page.
+
+  ## Examples
+
+      Cloudflareq.Queues.stream_consumers(req, "queue-uuid") |> Enum.to_list()
+  """
+  def stream_consumers(req, queue_id, opts \\ []) do
+    Cloudflareq.Stream.pages(fn cursor ->
+      page = cursor || 1
+      fetch_consumers_page(req, queue_id, Keyword.put(opts, :page, page))
+    end)
+  end
+
+  defp fetch_consumers_page(req, queue_id, opts) do
+    {query_opts, opts} = Keyword.split(opts, [:page, :per_page])
+    opts = Keyword.merge(opts, queues_operation: {:list_consumers_page, queue_id, query_opts})
+
+    case Req.request(req, opts) do
+      {:ok, %Req.Response{body: {:error, _} = error}} -> error
+      {:ok, %Req.Response{body: %{consumers: consumers, next_page: next}}} -> {:ok, {consumers, next}}
       {:error, exception} -> {:error, exception}
     end
   end
@@ -374,6 +438,17 @@ defmodule Cloudflareq.Queues do
     Req.merge(req, method: :get, url: queues_url(req, ""))
   end
 
+  defp configure_request(req, {:list_queues_page, query_opts}) do
+    params =
+      query_opts
+      |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+      |> Map.new()
+
+    opts = [method: :get, url: queues_url(req, "")]
+    opts = if map_size(params) > 0, do: Keyword.put(opts, :params, params), else: opts
+    Req.merge(req, opts)
+  end
+
   defp configure_request(req, {:create_queue, name}) do
     Req.merge(req, method: :post, url: queues_url(req, ""), json: %{"queue_name" => name})
   end
@@ -396,6 +471,17 @@ defmodule Cloudflareq.Queues do
 
   defp configure_request(req, {:list_consumers, queue_id}) do
     Req.merge(req, method: :get, url: queues_url(req, "/#{queue_id}/consumers"))
+  end
+
+  defp configure_request(req, {:list_consumers_page, queue_id, query_opts}) do
+    params =
+      query_opts
+      |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+      |> Map.new()
+
+    opts = [method: :get, url: queues_url(req, "/#{queue_id}/consumers")]
+    opts = if map_size(params) > 0, do: Keyword.put(opts, :params, params), else: opts
+    Req.merge(req, opts)
   end
 
   defp configure_request(req, {:create_consumer, queue_id, params}) do
@@ -510,9 +596,11 @@ defmodule Cloudflareq.Queues do
 
   defp handle_response({request, %Req.Response{status: status, body: body} = response})
        when status in 200..299 and is_map(body) do
+    result_info = body["result_info"]
+
     case Cloudflareq.unwrap_response(body) do
       {:ok, result} ->
-        transformed = transform_result(request, result)
+        transformed = transform_result(request, result, result_info)
         {request, %{response | body: transformed}}
 
       {:error, errors} ->
@@ -531,15 +619,28 @@ defmodule Cloudflareq.Queues do
     {request, response}
   end
 
-  defp transform_result(request, result) when is_list(result) do
+  defp transform_result(request, result, result_info) when is_list(result) do
     case request.options[:queues_operation] do
-      :list_queues -> Enum.map(result, &Cloudflareq.Queues.Queue.new/1)
-      {:list_consumers, _} -> Enum.map(result, &Cloudflareq.Queues.Consumer.new/1)
-      _ -> result
+      :list_queues ->
+        Enum.map(result, &Cloudflareq.Queues.Queue.new/1)
+
+      {:list_queues_page, _} ->
+        queues = Enum.map(result, &Cloudflareq.Queues.Queue.new/1)
+        %{queues: queues, next_page: next_page(result_info)}
+
+      {:list_consumers, _} ->
+        Enum.map(result, &Cloudflareq.Queues.Consumer.new/1)
+
+      {:list_consumers_page, _, _} ->
+        consumers = Enum.map(result, &Cloudflareq.Queues.Consumer.new/1)
+        %{consumers: consumers, next_page: next_page(result_info)}
+
+      _ ->
+        result
     end
   end
 
-  defp transform_result(request, result) when is_map(result) do
+  defp transform_result(request, result, _result_info) when is_map(result) do
     case request.options[:queues_operation] do
       {:create_queue, _} -> Cloudflareq.Queues.Queue.new(result)
       {:get_queue, _} -> Cloudflareq.Queues.Queue.new(result)
@@ -552,7 +653,13 @@ defmodule Cloudflareq.Queues do
     end
   end
 
-  defp transform_result(_request, result), do: result
+  defp transform_result(_request, result, _result_info), do: result
+
+  defp next_page(%{"page" => page, "total_count" => total, "per_page" => per_page})
+       when page * per_page < total,
+       do: page + 1
+
+  defp next_page(_), do: nil
 
   defp transform_pull_result(result) do
     %{

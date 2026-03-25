@@ -484,4 +484,107 @@ defmodule Cloudflareq.R2Test do
     assert url =~ "my-bucket"
     assert is_list(fields)
   end
+
+  test "stream_buckets streams all items across multiple pages" do
+    Req.Test.stub(__MODULE__, fn conn ->
+      params = Plug.Conn.fetch_query_params(conn).query_params
+
+      {buckets, cursor} =
+        case params["cursor"] do
+          nil ->
+            {[%{"name" => "a", "creation_date" => "2024-01-01T00:00:00Z", "location" => "WNAM", "storage_class" => "Standard"}],
+             "page2"}
+
+          "page2" ->
+            {[%{"name" => "b", "creation_date" => "2024-02-01T00:00:00Z", "location" => "ENAM", "storage_class" => "Standard"}],
+             nil}
+        end
+
+      result_info = if cursor, do: %{"cursor" => cursor}, else: nil
+
+      Req.Test.json(conn, %{
+        "success" => true,
+        "errors" => [],
+        "messages" => [],
+        "result" => %{"buckets" => buckets},
+        "result_info" => result_info
+      })
+    end)
+
+    req =
+      Cloudflareq.R2.new(
+        cf_account_id: "test-account",
+        cf_api_token: "test-token",
+        plug: {Req.Test, __MODULE__}
+      )
+
+    buckets = Cloudflareq.R2.stream_buckets(req) |> Enum.to_list()
+    assert [%Cloudflareq.R2.Bucket{name: "a"}, %Cloudflareq.R2.Bucket{name: "b"}] = buckets
+  end
+
+  test "stream_buckets with single page" do
+    Req.Test.stub(__MODULE__, fn conn ->
+      Req.Test.json(conn, %{
+        "success" => true,
+        "errors" => [],
+        "messages" => [],
+        "result" => %{
+          "buckets" => [
+            %{"name" => "only", "creation_date" => "2024-01-01T00:00:00Z", "location" => "WNAM", "storage_class" => "Standard"}
+          ]
+        },
+        "result_info" => nil
+      })
+    end)
+
+    req =
+      Cloudflareq.R2.new(
+        cf_account_id: "test-account",
+        cf_api_token: "test-token",
+        plug: {Req.Test, __MODULE__}
+      )
+
+    assert [%Cloudflareq.R2.Bucket{name: "only"}] = Cloudflareq.R2.stream_buckets(req) |> Enum.to_list()
+  end
+
+  test "stream_buckets halts on error" do
+    Req.Test.stub(__MODULE__, fn conn ->
+      params = Plug.Conn.fetch_query_params(conn).query_params
+
+      case params["cursor"] do
+        nil ->
+          Req.Test.json(conn, %{
+            "success" => true,
+            "errors" => [],
+            "messages" => [],
+            "result" => %{
+              "buckets" => [
+                %{"name" => "a", "creation_date" => "2024-01-01T00:00:00Z", "location" => "WNAM", "storage_class" => "Standard"}
+              ]
+            },
+            "result_info" => %{"cursor" => "page2"}
+          })
+
+        "page2" ->
+          conn
+          |> Plug.Conn.put_status(400)
+          |> Req.Test.json(%{
+            "success" => false,
+            "errors" => [%{"code" => 10000, "message" => "something broke"}],
+            "messages" => [],
+            "result" => nil
+          })
+      end
+    end)
+
+    req =
+      Cloudflareq.R2.new(
+        cf_account_id: "test-account",
+        cf_api_token: "test-token",
+        plug: {Req.Test, __MODULE__}
+      )
+
+    results = Cloudflareq.R2.stream_buckets(req) |> Enum.to_list()
+    assert [%Cloudflareq.R2.Bucket{name: "a"}, {:error, [%Cloudflareq.Error{}]}] = results
+  end
 end
