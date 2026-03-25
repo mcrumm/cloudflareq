@@ -119,6 +119,35 @@ defmodule Cloudflareq.D1 do
   end
 
   @doc """
+  Executes a batch of SQL queries against a D1 database, raising on error.
+
+  Same as `batch/3` but returns the list of `Cloudflareq.D1.Result` structs directly or raises.
+
+  ## Examples
+
+      Cloudflareq.D1.batch!(req, [
+        "SELECT * FROM users",
+        {"SELECT * FROM posts WHERE user_id = ?", [1]}
+      ])
+      #=> [
+      #=>   %Cloudflareq.D1.Result{success: true, rows: [%{"id" => 1, "name" => "Alice"}], meta: %{...}},
+      #=>   %Cloudflareq.D1.Result{success: true, rows: [%{"id" => 1, "title" => "Hello"}], meta: %{...}}
+      #=> ]
+  """
+  def batch!(req, queries, opts \\ []) when is_list(queries) do
+    case batch(req, queries, opts) do
+      {:ok, results} ->
+        results
+
+      {:error, errors} when is_list(errors) ->
+        raise "D1 batch failed: #{Enum.map_join(errors, "; ", &to_string/1)}"
+
+      {:error, exception} ->
+        raise exception
+    end
+  end
+
+  @doc """
   Lists all D1 databases for the account.
 
   Returns `{:ok, databases}` where `databases` is a list of database objects,
