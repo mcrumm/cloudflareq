@@ -22,9 +22,7 @@ defmodule Cloudflareq.ErrorData do
           source: %{pointer: String.t()} | nil
         }
 
-  @doc """
-  Creates a new `ErrorData` from a decoded JSON error map.
-  """
+  @doc false
   def new(%{} = map) do
     %__MODULE__{
       code: map["code"],

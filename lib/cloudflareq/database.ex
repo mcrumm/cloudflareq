@@ -21,9 +21,7 @@ defmodule Cloudflareq.Database do
           jurisdiction: String.t() | nil
         }
 
-  @doc """
-  Creates a new `Cloudflareq.Database` struct from a Cloudflare API response map.
-  """
+  @doc false
   def new(%{} = map) do
     %__MODULE__{
       uuid: map["uuid"],

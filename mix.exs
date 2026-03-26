@@ -33,19 +33,18 @@ defmodule Cloudflareq.MixProject do
         Guides: ["livebooks/clients.livemd"]
       ],
       groups_for_modules: [
-        Clients: [Cloudflareq.D1, Cloudflareq.R2, Cloudflareq.Workers, Cloudflareq.Queues],
-        Structures: [
-          Cloudflareq.D1.Result,
-          Cloudflareq.Database,
-          Cloudflareq.R2.Bucket,
-          Cloudflareq.R2.TempCredentials,
-          Cloudflareq.Workers.Script,
+        D1: [Cloudflareq.D1, Cloudflareq.D1.Result, Cloudflareq.Database],
+        R2: [Cloudflareq.R2, Cloudflareq.R2.Bucket, Cloudflareq.R2.TempCredentials],
+        Workers: [Cloudflareq.Workers, Cloudflareq.Workers.Script],
+        Queues: [
+          Cloudflareq.Queues,
           Cloudflareq.Queues.Queue,
           Cloudflareq.Queues.Consumer,
           Cloudflareq.Queues.Message,
           Cloudflareq.Queues.AckResult
         ],
-        Errors: [Cloudflareq.Error]
+        Errors: [Cloudflareq.Error, Cloudflareq.ErrorData, Cloudflareq.TokenError],
+        Auth: [Cloudflareq.Token]
       ]
     ]
   end

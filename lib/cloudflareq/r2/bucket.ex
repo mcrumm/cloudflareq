@@ -19,9 +19,7 @@ defmodule Cloudflareq.R2.Bucket do
           storage_class: String.t() | nil
         }
 
-  @doc """
-  Creates a new `Cloudflareq.R2.Bucket` struct from a Cloudflare API response map.
-  """
+  @doc false
   def new(%{} = map) do
     %__MODULE__{
       name: map["name"],

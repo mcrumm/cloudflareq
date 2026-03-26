@@ -19,9 +19,7 @@ defmodule Cloudflareq.Token do
           expires_on: String.t() | nil
         }
 
-  @doc """
-  Creates a new `Cloudflareq.Token` struct from a Cloudflare API response map.
-  """
+  @doc false
   def new(%{} = map) do
     %__MODULE__{
       id: map["id"],

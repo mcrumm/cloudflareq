@@ -20,9 +20,7 @@ defmodule Cloudflareq.R2.TempCredentials do
           session_token: String.t() | nil
         }
 
-  @doc """
-  Creates a new `Cloudflareq.R2.TempCredentials` struct from a Cloudflare API response map.
-  """
+  @doc false
   def new(%{} = map) do
     %__MODULE__{
       access_key_id: map["accessKeyId"],

@@ -34,9 +34,7 @@ defmodule Cloudflareq.Queues.Queue do
           settings: map() | nil
         }
 
-  @doc """
-  Creates a new `Cloudflareq.Queues.Queue` struct from a Cloudflare API response map.
-  """
+  @doc false
   def new(%{} = map) do
     %__MODULE__{
       queue_id: map["queue_id"],

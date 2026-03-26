@@ -23,9 +23,7 @@ defmodule Cloudflareq.Queues.Message do
           timestamp_ms: integer() | nil
         }
 
-  @doc """
-  Creates a new `Cloudflareq.Queues.Message` struct from a Cloudflare API response map.
-  """
+  @doc false
   def new(%{} = map) do
     %__MODULE__{
       id: map["id"],

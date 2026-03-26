@@ -17,9 +17,7 @@ defmodule Cloudflareq.Queues.AckResult do
           warnings: [String.t()]
         }
 
-  @doc """
-  Creates a new `Cloudflareq.Queues.AckResult` struct from a Cloudflare API response map.
-  """
+  @doc false
   def new(%{} = map) do
     %__MODULE__{
       ack_count: map["ackCount"],

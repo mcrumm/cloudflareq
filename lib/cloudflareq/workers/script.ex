@@ -51,9 +51,7 @@ defmodule Cloudflareq.Workers.Script do
           startup_time_ms: number() | nil
         }
 
-  @doc """
-  Creates a new `Cloudflareq.Workers.Script` struct from a Cloudflare API response map.
-  """
+  @doc false
   def new(%{} = map) do
     %__MODULE__{
       id: map["id"],
