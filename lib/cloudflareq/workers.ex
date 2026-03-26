@@ -243,8 +243,9 @@ defmodule Cloudflareq.Workers do
     Req.merge(req,
       method: :put,
       url: workers_url(req, "/#{script_name}"),
-      form_multipart:
-        [{"metadata", {Jason.encode!(metadata), content_type: "application/json"}} | parts]
+      form_multipart: [
+        {"metadata", {Jason.encode!(metadata), content_type: "application/json"}} | parts
+      ]
     )
   end
 
@@ -259,8 +260,7 @@ defmodule Cloudflareq.Workers do
 
         modules when is_list(modules) ->
           Enum.map(modules, fn {name, mod_content} ->
-            {name,
-             {mod_content, content_type: infer_content_type(name), filename: name}}
+            {name, {mod_content, content_type: infer_content_type(name), filename: name}}
           end)
       end
 

@@ -100,7 +100,10 @@ defmodule Cloudflareq.D1Test do
         retry: false
       )
 
-    assert {:error, %Cloudflareq.Error{errors: [%Cloudflareq.ErrorData{code: 7500, message: "query error: syntax error"}]}} =
+    assert {:error,
+            %Cloudflareq.Error{
+              errors: [%Cloudflareq.ErrorData{code: 7500, message: "query error: syntax error"}]
+            }} =
              Cloudflareq.D1.query(req, "INVALID SQL")
   end
 
@@ -247,8 +250,20 @@ defmodule Cloudflareq.D1Test do
         "errors" => [],
         "messages" => [],
         "result" => [
-          %{"uuid" => "db-1", "name" => "my-db", "version" => "production", "created_at" => "2024-01-01T00:00:00Z", "jurisdiction" => "eu"},
-          %{"uuid" => "db-2", "name" => "other-db", "version" => "production", "created_at" => "2024-02-01T00:00:00Z", "jurisdiction" => nil}
+          %{
+            "uuid" => "db-1",
+            "name" => "my-db",
+            "version" => "production",
+            "created_at" => "2024-01-01T00:00:00Z",
+            "jurisdiction" => "eu"
+          },
+          %{
+            "uuid" => "db-2",
+            "name" => "other-db",
+            "version" => "production",
+            "created_at" => "2024-02-01T00:00:00Z",
+            "jurisdiction" => nil
+          }
         ]
       })
     end)
@@ -281,7 +296,13 @@ defmodule Cloudflareq.D1Test do
         "success" => true,
         "errors" => [],
         "messages" => [],
-        "result" => %{"uuid" => "new-db-id", "name" => "my-new-db", "version" => "production", "created_at" => "2024-03-01T00:00:00Z", "jurisdiction" => nil}
+        "result" => %{
+          "uuid" => "new-db-id",
+          "name" => "my-new-db",
+          "version" => "production",
+          "created_at" => "2024-03-01T00:00:00Z",
+          "jurisdiction" => nil
+        }
       })
     end)
 
@@ -308,7 +329,13 @@ defmodule Cloudflareq.D1Test do
         "success" => true,
         "errors" => [],
         "messages" => [],
-        "result" => %{"uuid" => "some-db-id", "name" => "my-db", "version" => "production", "created_at" => "2024-01-01T00:00:00Z", "jurisdiction" => "fedramp"}
+        "result" => %{
+          "uuid" => "some-db-id",
+          "name" => "my-db",
+          "version" => "production",
+          "created_at" => "2024-01-01T00:00:00Z",
+          "jurisdiction" => "fedramp"
+        }
       })
     end)
 
@@ -374,15 +401,18 @@ defmodule Cloudflareq.D1Test do
     end)
 
     req =
-      Req.new(plug: {Req.Test, __MODULE__},
-        retry: false)
+      Req.new(
+        plug: {Req.Test, __MODULE__},
+        retry: false
+      )
       |> Cloudflareq.D1.attach(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
         database_id: "test-db-id"
       )
 
-    assert {:ok, %Cloudflareq.D1.Result{rows: [%{"1" => 1}]}} = Cloudflareq.D1.query(req, "SELECT 1")
+    assert {:ok, %Cloudflareq.D1.Result{rows: [%{"1" => 1}]}} =
+             Cloudflareq.D1.query(req, "SELECT 1")
   end
 
   test "sets bearer token auth header" do
@@ -429,12 +459,28 @@ defmodule Cloudflareq.D1Test do
       {databases, result_info} =
         case params["page"] do
           "1" ->
-            {[%{"uuid" => "db-1", "name" => "first", "version" => "production", "num_tables" => 1, "file_size" => 1024, "created_at" => "2024-01-01T00:00:00Z"}],
-             %{"page" => 1, "per_page" => 1, "total_count" => 2, "count" => 1}}
+            {[
+               %{
+                 "uuid" => "db-1",
+                 "name" => "first",
+                 "version" => "production",
+                 "num_tables" => 1,
+                 "file_size" => 1024,
+                 "created_at" => "2024-01-01T00:00:00Z"
+               }
+             ], %{"page" => 1, "per_page" => 1, "total_count" => 2, "count" => 1}}
 
           "2" ->
-            {[%{"uuid" => "db-2", "name" => "second", "version" => "production", "num_tables" => 2, "file_size" => 2048, "created_at" => "2024-02-01T00:00:00Z"}],
-             %{"page" => 2, "per_page" => 1, "total_count" => 2, "count" => 1}}
+            {[
+               %{
+                 "uuid" => "db-2",
+                 "name" => "second",
+                 "version" => "production",
+                 "num_tables" => 2,
+                 "file_size" => 2048,
+                 "created_at" => "2024-02-01T00:00:00Z"
+               }
+             ], %{"page" => 2, "per_page" => 1, "total_count" => 2, "count" => 1}}
         end
 
       Req.Test.json(conn, %{
@@ -455,7 +501,9 @@ defmodule Cloudflareq.D1Test do
       )
 
     databases = Cloudflareq.D1.stream_databases(req, per_page: 1) |> Enum.to_list()
-    assert [%Cloudflareq.Database{name: "first"}, %Cloudflareq.Database{name: "second"}] = databases
+
+    assert [%Cloudflareq.Database{name: "first"}, %Cloudflareq.Database{name: "second"}] =
+             databases
   end
 
   test "stream_databases with single page" do
@@ -465,7 +513,14 @@ defmodule Cloudflareq.D1Test do
         "errors" => [],
         "messages" => [],
         "result" => [
-          %{"uuid" => "db-1", "name" => "only", "version" => "production", "num_tables" => 1, "file_size" => 1024, "created_at" => "2024-01-01T00:00:00Z"}
+          %{
+            "uuid" => "db-1",
+            "name" => "only",
+            "version" => "production",
+            "num_tables" => 1,
+            "file_size" => 1024,
+            "created_at" => "2024-01-01T00:00:00Z"
+          }
         ],
         "result_info" => %{"page" => 1, "per_page" => 20, "total_count" => 1, "count" => 1}
       })
@@ -479,7 +534,8 @@ defmodule Cloudflareq.D1Test do
         retry: false
       )
 
-    assert [%Cloudflareq.Database{name: "only"}] = Cloudflareq.D1.stream_databases(req) |> Enum.to_list()
+    assert [%Cloudflareq.Database{name: "only"}] =
+             Cloudflareq.D1.stream_databases(req) |> Enum.to_list()
   end
 
   test "stream_databases halts on error" do
@@ -493,7 +549,14 @@ defmodule Cloudflareq.D1Test do
             "errors" => [],
             "messages" => [],
             "result" => [
-              %{"uuid" => "db-1", "name" => "first", "version" => "production", "num_tables" => 1, "file_size" => 1024, "created_at" => "2024-01-01T00:00:00Z"}
+              %{
+                "uuid" => "db-1",
+                "name" => "first",
+                "version" => "production",
+                "num_tables" => 1,
+                "file_size" => 1024,
+                "created_at" => "2024-01-01T00:00:00Z"
+              }
             ],
             "result_info" => %{"page" => 1, "per_page" => 1, "total_count" => 2, "count" => 1}
           })

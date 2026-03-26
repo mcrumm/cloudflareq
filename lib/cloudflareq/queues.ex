@@ -227,8 +227,11 @@ defmodule Cloudflareq.Queues do
     opts = Keyword.merge(opts, queues_operation: {:list_consumers_page, queue_id, query_opts})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{body: %{consumers: consumers, next_page: next}}} -> {:ok, {consumers, next}}
-      {:error, exception} -> {:error, exception}
+      {:ok, %Req.Response{body: %{consumers: consumers, next_page: next}}} ->
+        {:ok, {consumers, next}}
+
+      {:error, exception} ->
+        {:error, exception}
     end
   end
 
@@ -509,7 +512,9 @@ defmodule Cloudflareq.Queues do
   defp configure_request(req, {:pull_messages, queue_id, pull_opts}) do
     json = %{}
     json = maybe_put(json, "batch_size", Keyword.get(pull_opts, :batch_size))
-    json = maybe_put(json, "visibility_timeout_ms", Keyword.get(pull_opts, :visibility_timeout_ms))
+
+    json =
+      maybe_put(json, "visibility_timeout_ms", Keyword.get(pull_opts, :visibility_timeout_ms))
 
     Req.merge(req,
       method: :post,
