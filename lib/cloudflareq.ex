@@ -48,7 +48,8 @@ defmodule Cloudflareq do
       {:ok, %Cloudflareq.Token{status: "active"}} = Cloudflareq.verify_token("my-token")
 
   """
-  @spec verify_token(String.t(), keyword()) :: {:ok, Cloudflareq.Token.t()} | {:error, Exception.t()}
+  @spec verify_token(String.t(), keyword()) ::
+          {:ok, Cloudflareq.Token.t()} | {:error, Exception.t()}
   def verify_token(api_token, opts \\ []) when is_binary(api_token) do
     url = @base_url <> "/user/tokens/verify"
 
@@ -59,8 +60,11 @@ defmodule Cloudflareq do
             token = Cloudflareq.Token.new(result)
 
             case token.status do
-              "active" -> {:ok, token}
-              status when status in ["disabled", "expired"] -> {:error, %Cloudflareq.TokenError{status: status}}
+              "active" ->
+                {:ok, token}
+
+              status when status in ["disabled", "expired"] ->
+                {:error, %Cloudflareq.TokenError{status: status}}
             end
 
           {:error, error_data} ->
@@ -91,7 +95,11 @@ defmodule Cloudflareq do
   end
 
   @doc false
-  def transform_response(request, %Req.Response{status: status, body: body} = response, transform_fun)
+  def transform_response(
+        request,
+        %Req.Response{status: status, body: body} = response,
+        transform_fun
+      )
       when status in 200..299 and is_map(body) do
     result_info = body["result_info"]
 

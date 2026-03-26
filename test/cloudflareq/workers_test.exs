@@ -193,7 +193,10 @@ defmodule Cloudflareq.WorkersTest do
         retry: false
       )
 
-    assert {:error, %Cloudflareq.Error{errors: [%Cloudflareq.ErrorData{code: 10007, message: "script not found"}]}} =
+    assert {:error,
+            %Cloudflareq.Error{
+              errors: [%Cloudflareq.ErrorData{code: 10007, message: "script not found"}]
+            }} =
              Cloudflareq.Workers.list_scripts(req)
   end
 
@@ -231,11 +234,14 @@ defmodule Cloudflareq.WorkersTest do
     end)
 
     req =
-      Req.new(plug: {Req.Test, __MODULE__},
-        retry: false)
+      Req.new(
+        plug: {Req.Test, __MODULE__},
+        retry: false
+      )
       |> Cloudflareq.Workers.attach(cf_account_id: "test-account", cf_api_token: "test-token")
 
-    assert {:ok, [%Cloudflareq.Workers.Script{id: "my-worker"}]} = Cloudflareq.Workers.list_scripts(req)
+    assert {:ok, [%Cloudflareq.Workers.Script{id: "my-worker"}]} =
+             Cloudflareq.Workers.list_scripts(req)
   end
 
   test "stream_scripts streams across multiple pages" do
@@ -272,7 +278,11 @@ defmodule Cloudflareq.WorkersTest do
       )
 
     scripts = Cloudflareq.Workers.stream_scripts(req, per_page: 1) |> Enum.to_list()
-    assert [%Cloudflareq.Workers.Script{id: "worker-a"}, %Cloudflareq.Workers.Script{id: "worker-b"}] = scripts
+
+    assert [
+             %Cloudflareq.Workers.Script{id: "worker-a"},
+             %Cloudflareq.Workers.Script{id: "worker-b"}
+           ] = scripts
   end
 
   test "stream_scripts with single page" do

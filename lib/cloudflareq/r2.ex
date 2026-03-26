@@ -496,6 +496,7 @@ defmodule Cloudflareq.R2 do
 
   defp event_notifications_url(req, bucket_name, path) do
     account_id = req.options[:cf_account_id] || raise "missing required option :cf_account_id"
+
     "#{Cloudflareq.base_url(account_id)}/event_notifications/r2/#{bucket_name}/configuration#{path}"
   end
 

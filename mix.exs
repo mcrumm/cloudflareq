@@ -10,6 +10,7 @@ defmodule Cloudflareq.MixProject do
       version: @version,
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
+      aliases: aliases(),
       deps: deps(),
       docs: docs(),
       package: package()
@@ -17,7 +18,7 @@ defmodule Cloudflareq.MixProject do
   end
 
   def cli do
-    [preferred_envs: [docs: :docs, "hex.publish": :docs]]
+    [preferred_envs: [docs: :docs, "hex.publish": :docs, precommit: :test]]
   end
 
   def application do
@@ -55,6 +56,12 @@ defmodule Cloudflareq.MixProject do
       {:req_s3, "~> 0.2", optional: true},
       {:plug, "~> 1.0", only: :test},
       {:ex_doc, ">= 0.0.0", only: :docs, runtime: false}
+    ]
+  end
+
+  defp aliases do
+    [
+      precommit: ["compile --warnings-as-errors", "deps.unlock --unused", "format", "test"]
     ]
   end
 

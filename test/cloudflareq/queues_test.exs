@@ -107,7 +107,8 @@ defmodule Cloudflareq.QueuesTest do
         retry: false
       )
 
-    assert {:ok, %Cloudflareq.Queues.Queue{queue_id: "q-1"}} = Cloudflareq.Queues.get_queue(req, "q-1")
+    assert {:ok, %Cloudflareq.Queues.Queue{queue_id: "q-1"}} =
+             Cloudflareq.Queues.get_queue(req, "q-1")
   end
 
   test "update_queue updates queue settings" do
@@ -185,7 +186,9 @@ defmodule Cloudflareq.QueuesTest do
         retry: false
       )
 
-    assert {:ok, [%Cloudflareq.Queues.Consumer{} = c]} = Cloudflareq.Queues.list_consumers(req, "q-1")
+    assert {:ok, [%Cloudflareq.Queues.Consumer{} = c]} =
+             Cloudflareq.Queues.list_consumers(req, "q-1")
+
     assert c.consumer_id == "c-1"
     assert c.type == "http_pull"
     assert c.settings.batch_size == 10
@@ -217,7 +220,10 @@ defmodule Cloudflareq.QueuesTest do
       )
 
     assert {:ok, %Cloudflareq.Queues.Consumer{type: "http_pull"}} =
-             Cloudflareq.Queues.create_consumer(req, "q-1", type: "http_pull", settings: %{batch_size: 10})
+             Cloudflareq.Queues.create_consumer(req, "q-1",
+               type: "http_pull",
+               settings: %{batch_size: 10}
+             )
   end
 
   test "update_consumer updates a consumer" do
@@ -242,7 +248,10 @@ defmodule Cloudflareq.QueuesTest do
       )
 
     assert {:ok, %Cloudflareq.Queues.Consumer{}} =
-             Cloudflareq.Queues.update_consumer(req, "q-1", "c-1", type: "http_pull", settings: %{batch_size: 20})
+             Cloudflareq.Queues.update_consumer(req, "q-1", "c-1",
+               type: "http_pull",
+               settings: %{batch_size: 20}
+             )
   end
 
   test "delete_consumer deletes a consumer" do
@@ -346,8 +355,22 @@ defmodule Cloudflareq.QueuesTest do
         "messages" => [],
         "result" => %{
           "messages" => [
-            %{"id" => "m-1", "body" => %{"event" => "signup"}, "lease_id" => "lease-1", "attempts" => 1, "metadata" => nil, "timestamp_ms" => 1_700_000_000_000},
-            %{"id" => "m-2", "body" => "hello", "lease_id" => "lease-2", "attempts" => 1, "metadata" => nil, "timestamp_ms" => 1_700_000_001_000}
+            %{
+              "id" => "m-1",
+              "body" => %{"event" => "signup"},
+              "lease_id" => "lease-1",
+              "attempts" => 1,
+              "metadata" => nil,
+              "timestamp_ms" => 1_700_000_000_000
+            },
+            %{
+              "id" => "m-2",
+              "body" => "hello",
+              "lease_id" => "lease-2",
+              "attempts" => 1,
+              "metadata" => nil,
+              "timestamp_ms" => 1_700_000_001_000
+            }
           ],
           "message_backlog_count" => 10
         }
@@ -434,7 +457,10 @@ defmodule Cloudflareq.QueuesTest do
         retry: false
       )
 
-    assert {:error, %Cloudflareq.Error{errors: [%Cloudflareq.ErrorData{code: 1001, message: "queue not found"}]}} =
+    assert {:error,
+            %Cloudflareq.Error{
+              errors: [%Cloudflareq.ErrorData{code: 1001, message: "queue not found"}]
+            }} =
              Cloudflareq.Queues.get_queue(req, "nonexistent")
   end
 
@@ -472,11 +498,14 @@ defmodule Cloudflareq.QueuesTest do
     end)
 
     req =
-      Req.new(plug: {Req.Test, __MODULE__},
-        retry: false)
+      Req.new(
+        plug: {Req.Test, __MODULE__},
+        retry: false
+      )
       |> Cloudflareq.Queues.attach(cf_account_id: "test-account", cf_api_token: "test-token")
 
-    assert {:ok, [%Cloudflareq.Queues.Queue{queue_name: "my-queue"}]} = Cloudflareq.Queues.list_queues(req)
+    assert {:ok, [%Cloudflareq.Queues.Queue{queue_name: "my-queue"}]} =
+             Cloudflareq.Queues.list_queues(req)
   end
 
   test "stream_queues streams across multiple pages" do
@@ -513,7 +542,11 @@ defmodule Cloudflareq.QueuesTest do
       )
 
     queues = Cloudflareq.Queues.stream_queues(req, per_page: 1) |> Enum.to_list()
-    assert [%Cloudflareq.Queues.Queue{queue_name: "queue-a"}, %Cloudflareq.Queues.Queue{queue_name: "queue-b"}] = queues
+
+    assert [
+             %Cloudflareq.Queues.Queue{queue_name: "queue-a"},
+             %Cloudflareq.Queues.Queue{queue_name: "queue-b"}
+           ] = queues
   end
 
   test "stream_queues with single page" do
@@ -612,7 +645,10 @@ defmodule Cloudflareq.QueuesTest do
 
     consumers = Cloudflareq.Queues.stream_consumers(req, "q-1", per_page: 1) |> Enum.to_list()
 
-    assert [%Cloudflareq.Queues.Consumer{consumer_id: "c-a"}, %Cloudflareq.Queues.Consumer{consumer_id: "c-b"}] =
+    assert [
+             %Cloudflareq.Queues.Consumer{consumer_id: "c-a"},
+             %Cloudflareq.Queues.Consumer{consumer_id: "c-b"}
+           ] =
              consumers
   end
 end
