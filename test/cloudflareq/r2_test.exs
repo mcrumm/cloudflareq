@@ -27,7 +27,8 @@ defmodule Cloudflareq.R2Test do
       Cloudflareq.R2.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, %{buckets: buckets, cursor: cursor}} = Cloudflareq.R2.list_buckets(req)
@@ -58,7 +59,8 @@ defmodule Cloudflareq.R2Test do
       Cloudflareq.R2.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, %Cloudflareq.R2.Bucket{} = bucket} = Cloudflareq.R2.create_bucket(req, "my-new-bucket")
@@ -87,7 +89,8 @@ defmodule Cloudflareq.R2Test do
       Cloudflareq.R2.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, %Cloudflareq.R2.Bucket{} = bucket} =
@@ -113,7 +116,8 @@ defmodule Cloudflareq.R2Test do
       Cloudflareq.R2.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, %Cloudflareq.R2.Bucket{} = bucket} = Cloudflareq.R2.get_bucket(req, "my-bucket")
@@ -137,7 +141,8 @@ defmodule Cloudflareq.R2Test do
       Cloudflareq.R2.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert :ok = Cloudflareq.R2.delete_bucket(req, "doomed-bucket")
@@ -170,7 +175,8 @@ defmodule Cloudflareq.R2Test do
       Cloudflareq.R2.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, %Cloudflareq.R2.TempCredentials{} = creds} =
@@ -202,10 +208,11 @@ defmodule Cloudflareq.R2Test do
       Cloudflareq.R2.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
-    assert {:error, [%Cloudflareq.Error{code: 10006, message: "bucket not found"}]} =
+    assert {:error, %Cloudflareq.Error{errors: [%Cloudflareq.ErrorData{code: 10006, message: "bucket not found"}]}} =
              Cloudflareq.R2.get_bucket(req, "nonexistent")
   end
 
@@ -226,7 +233,8 @@ defmodule Cloudflareq.R2Test do
       Cloudflareq.R2.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     Cloudflareq.R2.list_buckets(req)
@@ -250,7 +258,8 @@ defmodule Cloudflareq.R2Test do
         cf_account_id: "test-account",
         cf_api_token: "test-token",
         r2_jurisdiction: "eu",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     Cloudflareq.R2.list_buckets(req)
@@ -268,7 +277,8 @@ defmodule Cloudflareq.R2Test do
     end)
 
     req =
-      Req.new(plug: {Req.Test, __MODULE__})
+      Req.new(plug: {Req.Test, __MODULE__},
+        retry: false)
       |> Cloudflareq.R2.attach(cf_account_id: "test-account", cf_api_token: "test-token")
 
     assert {:ok, %{buckets: [%Cloudflareq.R2.Bucket{name: "attached-bucket"}]}} =
@@ -300,7 +310,8 @@ defmodule Cloudflareq.R2Test do
       Cloudflareq.R2.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, %{"rules" => [rule]}} = Cloudflareq.R2.get_lifecycle(req, "my-bucket")
@@ -327,7 +338,8 @@ defmodule Cloudflareq.R2Test do
       Cloudflareq.R2.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     rules = [%{"id" => "rule-1", "conditions" => %{"prefix" => "logs/"}, "actions" => %{"type" => "Delete", "afterDays" => 30}}]
@@ -355,7 +367,8 @@ defmodule Cloudflareq.R2Test do
       Cloudflareq.R2.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, %{"rules" => [rule]}} = Cloudflareq.R2.get_cors(req, "my-bucket")
@@ -382,7 +395,8 @@ defmodule Cloudflareq.R2Test do
       Cloudflareq.R2.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     rules = [%{"allowedOrigins" => ["*"], "allowedMethods" => ["GET", "PUT"]}]
@@ -406,7 +420,8 @@ defmodule Cloudflareq.R2Test do
       Cloudflareq.R2.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert :ok = Cloudflareq.R2.delete_cors(req, "my-bucket")
@@ -592,7 +607,8 @@ defmodule Cloudflareq.R2Test do
       Cloudflareq.R2.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     buckets = Cloudflareq.R2.stream_buckets(req) |> Enum.to_list()
@@ -618,7 +634,8 @@ defmodule Cloudflareq.R2Test do
       Cloudflareq.R2.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert [%Cloudflareq.R2.Bucket{name: "only"}] = Cloudflareq.R2.stream_buckets(req) |> Enum.to_list()
@@ -658,11 +675,12 @@ defmodule Cloudflareq.R2Test do
       Cloudflareq.R2.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     results = Cloudflareq.R2.stream_buckets(req) |> Enum.to_list()
-    assert [%Cloudflareq.R2.Bucket{name: "a"}, {:error, [%Cloudflareq.Error{}]}] = results
+    assert [%Cloudflareq.R2.Bucket{name: "a"}, {:error, %Cloudflareq.Error{}}] = results
   end
 
   test "list_event_notification_rules returns configuration" do
@@ -688,7 +706,8 @@ defmodule Cloudflareq.R2Test do
       Cloudflareq.R2.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, %{"queues" => queues}} =
@@ -715,10 +734,11 @@ defmodule Cloudflareq.R2Test do
       Cloudflareq.R2.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
-    assert {:error, [%Cloudflareq.Error{code: 10006, message: "bucket not found"}]} =
+    assert {:error, %Cloudflareq.Error{errors: [%Cloudflareq.ErrorData{code: 10006, message: "bucket not found"}]}} =
              Cloudflareq.R2.list_event_notification_rules(req, "nonexistent")
   end
 
@@ -742,7 +762,8 @@ defmodule Cloudflareq.R2Test do
       Cloudflareq.R2.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     rules = [%{"actions" => ["PutObject"], "prefix" => "images/"}]
@@ -767,10 +788,11 @@ defmodule Cloudflareq.R2Test do
       Cloudflareq.R2.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
-    assert {:error, [%Cloudflareq.Error{code: 10000, message: "invalid rule"}]} =
+    assert {:error, %Cloudflareq.Error{errors: [%Cloudflareq.ErrorData{code: 10000, message: "invalid rule"}]}} =
              Cloudflareq.R2.put_event_notification_rule(req, "my-bucket", "queue-1", [%{"actions" => ["BadAction"]}])
   end
 
@@ -791,7 +813,8 @@ defmodule Cloudflareq.R2Test do
       Cloudflareq.R2.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert :ok = Cloudflareq.R2.delete_event_notification_rule(req, "my-bucket", "queue-1")
@@ -813,10 +836,11 @@ defmodule Cloudflareq.R2Test do
       Cloudflareq.R2.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
-    assert {:error, [%Cloudflareq.Error{code: 10006, message: "queue not found"}]} =
+    assert {:error, %Cloudflareq.Error{errors: [%Cloudflareq.ErrorData{code: 10006, message: "queue not found"}]}} =
              Cloudflareq.R2.delete_event_notification_rule(req, "my-bucket", "nonexistent")
   end
 end

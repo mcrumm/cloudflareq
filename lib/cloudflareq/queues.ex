@@ -67,7 +67,6 @@ defmodule Cloudflareq.Queues do
     opts = Keyword.merge(opts, queues_operation: :list_queues)
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
       {:ok, %Req.Response{body: body}} -> {:ok, body}
       {:error, exception} -> {:error, exception}
     end
@@ -99,7 +98,6 @@ defmodule Cloudflareq.Queues do
     opts = Keyword.merge(opts, queues_operation: {:list_queues_page, query_opts})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
       {:ok, %Req.Response{body: %{queues: queues, next_page: next}}} -> {:ok, {queues, next}}
       {:error, exception} -> {:error, exception}
     end
@@ -118,7 +116,6 @@ defmodule Cloudflareq.Queues do
     opts = Keyword.merge(opts, queues_operation: {:create_queue, name})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
       {:ok, %Req.Response{body: body}} -> {:ok, body}
       {:error, exception} -> {:error, exception}
     end
@@ -137,7 +134,6 @@ defmodule Cloudflareq.Queues do
     opts = Keyword.merge(opts, queues_operation: {:get_queue, queue_id})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
       {:ok, %Req.Response{body: body}} -> {:ok, body}
       {:error, exception} -> {:error, exception}
     end
@@ -162,7 +158,6 @@ defmodule Cloudflareq.Queues do
     opts = Keyword.merge(opts, queues_operation: {:update_queue, queue_id, params})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
       {:ok, %Req.Response{body: body}} -> {:ok, body}
       {:error, exception} -> {:error, exception}
     end
@@ -181,8 +176,7 @@ defmodule Cloudflareq.Queues do
     opts = Keyword.merge(opts, queues_operation: {:delete_queue, queue_id})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{status: 200}} -> :ok
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
+      {:ok, _response} -> :ok
       {:error, exception} -> {:error, exception}
     end
   end
@@ -202,7 +196,6 @@ defmodule Cloudflareq.Queues do
     opts = Keyword.merge(opts, queues_operation: {:list_consumers, queue_id})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
       {:ok, %Req.Response{body: body}} -> {:ok, body}
       {:error, exception} -> {:error, exception}
     end
@@ -234,7 +227,6 @@ defmodule Cloudflareq.Queues do
     opts = Keyword.merge(opts, queues_operation: {:list_consumers_page, queue_id, query_opts})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
       {:ok, %Req.Response{body: %{consumers: consumers, next_page: next}}} -> {:ok, {consumers, next}}
       {:error, exception} -> {:error, exception}
     end
@@ -261,7 +253,6 @@ defmodule Cloudflareq.Queues do
     opts = Keyword.merge(opts, queues_operation: {:create_consumer, queue_id, params})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
       {:ok, %Req.Response{body: body}} -> {:ok, body}
       {:error, exception} -> {:error, exception}
     end
@@ -286,7 +277,6 @@ defmodule Cloudflareq.Queues do
       )
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
       {:ok, %Req.Response{body: body}} -> {:ok, body}
       {:error, exception} -> {:error, exception}
     end
@@ -305,8 +295,7 @@ defmodule Cloudflareq.Queues do
     opts = Keyword.merge(opts, queues_operation: {:delete_consumer, queue_id, consumer_id})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{status: 200}} -> :ok
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
+      {:ok, _response} -> :ok
       {:error, exception} -> {:error, exception}
     end
   end
@@ -333,8 +322,7 @@ defmodule Cloudflareq.Queues do
     opts = Keyword.merge(opts, queues_operation: {:send_message, queue_id, body, msg_opts})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{status: 200}} -> :ok
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
+      {:ok, _response} -> :ok
       {:error, exception} -> {:error, exception}
     end
   end
@@ -360,8 +348,7 @@ defmodule Cloudflareq.Queues do
     opts = Keyword.merge(opts, queues_operation: {:send_message_batch, queue_id, messages})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{status: 200}} -> :ok
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
+      {:ok, _response} -> :ok
       {:error, exception} -> {:error, exception}
     end
   end
@@ -386,7 +373,6 @@ defmodule Cloudflareq.Queues do
     opts = Keyword.merge(opts, queues_operation: {:pull_messages, queue_id, pull_opts})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
       {:ok, %Req.Response{body: body}} -> {:ok, body}
       {:error, exception} -> {:error, exception}
     end
@@ -413,7 +399,6 @@ defmodule Cloudflareq.Queues do
     opts = Keyword.merge(opts, queues_operation: {:ack_messages, queue_id, params})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
       {:ok, %Req.Response{body: body}} -> {:ok, body}
       {:error, exception} -> {:error, exception}
     end
@@ -594,29 +579,8 @@ defmodule Cloudflareq.Queues do
 
   # -- Response step --
 
-  defp handle_response({request, %Req.Response{status: status, body: body} = response})
-       when status in 200..299 and is_map(body) do
-    result_info = body["result_info"]
-
-    case Cloudflareq.unwrap_response(body) do
-      {:ok, result} ->
-        transformed = transform_result(request, result, result_info)
-        {request, %{response | body: transformed}}
-
-      {:error, errors} ->
-        {request, %{response | body: {:error, errors}}}
-    end
-  end
-
-  defp handle_response({request, %Req.Response{body: body} = response}) when is_map(body) do
-    case Cloudflareq.unwrap_response(body) do
-      {:error, errors} -> {request, %{response | body: {:error, errors}}}
-      _ -> {request, response}
-    end
-  end
-
   defp handle_response({request, response}) do
-    {request, response}
+    Cloudflareq.transform_response(request, response, &transform_result/3)
   end
 
   defp transform_result(request, result, result_info) when is_list(result) do

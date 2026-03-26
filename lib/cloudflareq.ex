@@ -53,7 +53,7 @@ defmodule Cloudflareq do
     url = @base_url <> "/user/tokens/verify"
 
     case Req.request([method: :get, url: url, auth: {:bearer, api_token}] ++ opts) do
-      {:ok, %Req.Response{body: body}} when is_map(body) ->
+      {:ok, %Req.Response{body: body} = response} when is_map(body) ->
         case unwrap_response(body) do
           {:ok, result} ->
             token = Cloudflareq.Token.new(result)
@@ -63,9 +63,8 @@ defmodule Cloudflareq do
               status when status in ["disabled", "expired"] -> {:error, %Cloudflareq.TokenError{status: status}}
             end
 
-          {:error, errors} ->
-            message = Enum.map_join(errors, ", ", &to_string/1)
-            {:error, RuntimeError.exception(message)}
+          {:error, error_data} ->
+            {:error, %Cloudflareq.Error{errors: error_data, headers: response.headers}}
         end
 
       {:error, exception} ->
@@ -91,17 +90,41 @@ defmodule Cloudflareq do
     end
   end
 
-  @doc """
-  Unwraps a Cloudflare API response body.
+  @doc false
+  def transform_response(request, %Req.Response{status: status, body: body} = response, transform_fun)
+      when status in 200..299 and is_map(body) do
+    result_info = body["result_info"]
 
-  Returns `{:ok, result}` on success or `{:error, errors}` with a list of
-  `Cloudflareq.Error` structs on failure.
-  """
+    case unwrap_response(body) do
+      {:ok, result} ->
+        {request, %{response | body: transform_fun.(request, result, result_info)}}
+
+      {:error, error_data} ->
+        {request, %Cloudflareq.Error{errors: error_data, headers: response.headers}}
+    end
+  end
+
+  def transform_response(request, %Req.Response{body: body} = response, _transform_fun)
+      when is_map(body) do
+    case unwrap_response(body) do
+      {:error, error_data} ->
+        {request, %Cloudflareq.Error{errors: error_data, headers: response.headers}}
+
+      _ ->
+        {request, response}
+    end
+  end
+
+  def transform_response(request, response, _transform_fun) do
+    {request, response}
+  end
+
+  @doc false
   def unwrap_response(%{"success" => true, "result" => result}) do
     {:ok, result}
   end
 
   def unwrap_response(%{"success" => false, "errors" => errors}) do
-    {:error, Enum.map(errors, &Cloudflareq.Error.new/1)}
+    {:error, Enum.map(errors, &Cloudflareq.ErrorData.new/1)}
   end
 end

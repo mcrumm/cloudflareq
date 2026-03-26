@@ -72,14 +72,8 @@ defmodule Cloudflareq.D1 do
   """
   def query!(req, sql, params \\ [], opts \\ []) do
     case query(req, sql, params, opts) do
-      {:ok, result} ->
-        result
-
-      {:error, errors} when is_list(errors) ->
-        raise "D1 query failed: #{Enum.map_join(errors, "; ", &to_string/1)}"
-
-      {:error, exception} ->
-        raise exception
+      {:ok, result} -> result
+      {:error, exception} -> raise exception
     end
   end
 
@@ -107,14 +101,8 @@ defmodule Cloudflareq.D1 do
     opts = Keyword.merge(opts, d1_operation: {:batch, queries})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{body: results}} when is_list(results) ->
-        {:ok, results}
-
-      {:ok, %Req.Response{body: {:error, _} = error}} ->
-        error
-
-      {:error, exception} ->
-        {:error, exception}
+      {:ok, %Req.Response{body: body}} -> {:ok, body}
+      {:error, exception} -> {:error, exception}
     end
   end
 
@@ -136,14 +124,8 @@ defmodule Cloudflareq.D1 do
   """
   def batch!(req, queries, opts \\ []) when is_list(queries) do
     case batch(req, queries, opts) do
-      {:ok, results} ->
-        results
-
-      {:error, errors} when is_list(errors) ->
-        raise "D1 batch failed: #{Enum.map_join(errors, "; ", &to_string/1)}"
-
-      {:error, exception} ->
-        raise exception
+      {:ok, results} -> results
+      {:error, exception} -> raise exception
     end
   end
 
@@ -196,7 +178,6 @@ defmodule Cloudflareq.D1 do
     opts = Keyword.merge(opts, d1_operation: {:list_databases_page, query_opts})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
       {:ok, %Req.Response{body: %{databases: dbs, next_page: next}}} -> {:ok, {dbs, next}}
       {:error, exception} -> {:error, exception}
     end
@@ -255,8 +236,7 @@ defmodule Cloudflareq.D1 do
     opts = Keyword.merge(opts, d1_operation: {:delete_database, database_id})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{status: 200}} -> :ok
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
+      {:ok, _response} -> :ok
       {:error, exception} -> {:error, exception}
     end
   end
@@ -296,14 +276,8 @@ defmodule Cloudflareq.D1 do
     opts = Keyword.merge(opts, d1_operation: {:query, sql, params})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{body: %Cloudflareq.D1.Result{} = result}} ->
-        {:ok, result}
-
-      {:ok, %Req.Response{body: {:error, _} = error}} ->
-        error
-
-      {:error, exception} ->
-        {:error, exception}
+      {:ok, %Req.Response{body: body}} -> {:ok, body}
+      {:error, exception} -> {:error, exception}
     end
   end
 
@@ -386,29 +360,8 @@ defmodule Cloudflareq.D1 do
 
   # -- Response step --
 
-  defp handle_response({request, %Req.Response{status: status, body: body} = response})
-       when status in 200..299 and is_map(body) do
-    result_info = body["result_info"]
-
-    case Cloudflareq.unwrap_response(body) do
-      {:ok, result} ->
-        transformed = transform_result(request, result, result_info)
-        {request, %{response | body: transformed}}
-
-      {:error, errors} ->
-        {request, %{response | body: {:error, errors}}}
-    end
-  end
-
-  defp handle_response({request, %Req.Response{body: body} = response}) when is_map(body) do
-    case Cloudflareq.unwrap_response(body) do
-      {:error, errors} -> {request, %{response | body: {:error, errors}}}
-      _ -> {request, response}
-    end
-  end
-
   defp handle_response({request, response}) do
-    {request, response}
+    Cloudflareq.transform_response(request, response, &transform_result/3)
   end
 
   defp transform_result(request, result, result_info) when is_list(result) do

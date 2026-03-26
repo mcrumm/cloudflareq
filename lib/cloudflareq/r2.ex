@@ -109,7 +109,6 @@ defmodule Cloudflareq.R2 do
 
       case list_buckets(req, opts) do
         {:ok, %{buckets: buckets, cursor: next}} -> {:ok, {buckets, next}}
-        {:ok, {:error, _} = error} -> error
         {:error, reason} -> {:error, reason}
       end
     end)
@@ -155,7 +154,6 @@ defmodule Cloudflareq.R2 do
     opts = Keyword.merge(opts, r2_operation: {:get_bucket, bucket_name})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
       {:ok, %Req.Response{body: body}} -> {:ok, body}
       {:error, exception} -> {:error, exception}
     end
@@ -174,8 +172,7 @@ defmodule Cloudflareq.R2 do
     opts = Keyword.merge(opts, r2_operation: {:delete_bucket, bucket_name})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{status: 200}} -> :ok
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
+      {:ok, _response} -> :ok
       {:error, exception} -> {:error, exception}
     end
   end
@@ -194,7 +191,6 @@ defmodule Cloudflareq.R2 do
     opts = Keyword.merge(opts, r2_operation: {:get_lifecycle, bucket_name})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
       {:ok, %Req.Response{body: body}} -> {:ok, body}
       {:error, exception} -> {:error, exception}
     end
@@ -216,7 +212,6 @@ defmodule Cloudflareq.R2 do
     opts = Keyword.merge(opts, r2_operation: {:put_lifecycle, bucket_name, rules})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
       {:ok, %Req.Response{body: body}} -> {:ok, body}
       {:error, exception} -> {:error, exception}
     end
@@ -236,7 +231,6 @@ defmodule Cloudflareq.R2 do
     opts = Keyword.merge(opts, r2_operation: {:get_cors, bucket_name})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
       {:ok, %Req.Response{body: body}} -> {:ok, body}
       {:error, exception} -> {:error, exception}
     end
@@ -258,7 +252,6 @@ defmodule Cloudflareq.R2 do
     opts = Keyword.merge(opts, r2_operation: {:put_cors, bucket_name, rules})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
       {:ok, %Req.Response{body: body}} -> {:ok, body}
       {:error, exception} -> {:error, exception}
     end
@@ -277,8 +270,7 @@ defmodule Cloudflareq.R2 do
     opts = Keyword.merge(opts, r2_operation: {:delete_cors, bucket_name})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{status: 200}} -> :ok
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
+      {:ok, _response} -> :ok
       {:error, exception} -> {:error, exception}
     end
   end
@@ -297,7 +289,6 @@ defmodule Cloudflareq.R2 do
     opts = Keyword.merge(opts, r2_operation: {:list_event_notification_rules, bucket_name})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
       {:ok, %Req.Response{body: body}} -> {:ok, body}
       {:error, exception} -> {:error, exception}
     end
@@ -324,7 +315,6 @@ defmodule Cloudflareq.R2 do
       )
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
       {:ok, %Req.Response{body: body}} -> {:ok, body}
       {:error, exception} -> {:error, exception}
     end
@@ -346,8 +336,7 @@ defmodule Cloudflareq.R2 do
       )
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{status: 200}} -> :ok
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
+      {:ok, _response} -> :ok
       {:error, exception} -> {:error, exception}
     end
   end
@@ -386,7 +375,6 @@ defmodule Cloudflareq.R2 do
     opts = Keyword.merge(opts, r2_operation: {:create_temp_credentials, params})
 
     case Req.request(req, opts) do
-      {:ok, %Req.Response{body: {:error, _} = error}} -> error
       {:ok, %Req.Response{body: body}} -> {:ok, body}
       {:error, exception} -> {:error, exception}
     end
@@ -513,29 +501,8 @@ defmodule Cloudflareq.R2 do
 
   # -- Response step --
 
-  defp handle_response({request, %Req.Response{status: status, body: body} = response})
-       when status in 200..299 and is_map(body) do
-    result_info = body["result_info"]
-
-    case Cloudflareq.unwrap_response(body) do
-      {:ok, result} ->
-        transformed = transform_result(request, result, result_info)
-        {request, %{response | body: transformed}}
-
-      {:error, errors} ->
-        {request, %{response | body: {:error, errors}}}
-    end
-  end
-
-  defp handle_response({request, %Req.Response{body: body} = response}) when is_map(body) do
-    case Cloudflareq.unwrap_response(body) do
-      {:error, errors} -> {request, %{response | body: {:error, errors}}}
-      _ -> {request, response}
-    end
-  end
-
   defp handle_response({request, response}) do
-    {request, response}
+    Cloudflareq.transform_response(request, response, &transform_result/3)
   end
 
   defp transform_result(request, result, result_info) do

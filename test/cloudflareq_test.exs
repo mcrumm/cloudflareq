@@ -17,7 +17,7 @@ defmodule CloudflareqTest do
     end)
 
     assert {:ok, token} =
-             Cloudflareq.verify_token("test-token", plug: {Req.Test, __MODULE__})
+             Cloudflareq.verify_token("test-token", plug: {Req.Test, __MODULE__}, retry: false)
 
     assert %Cloudflareq.Token{} = token
     assert token.id == "token-id-123"
@@ -26,7 +26,7 @@ defmodule CloudflareqTest do
     assert token.expires_on == "2025-01-01T00:00:00Z"
   end
 
-  test "verify_token returns {:error, %RuntimeError{}} on API failure" do
+  test "verify_token returns {:error, %Cloudflareq.Error{}} on API failure" do
     Req.Test.stub(__MODULE__, fn conn ->
       conn
       |> Plug.Conn.put_status(403)
@@ -38,10 +38,10 @@ defmodule CloudflareqTest do
       })
     end)
 
-    assert {:error, %RuntimeError{message: message}} =
-             Cloudflareq.verify_token("bad-token", plug: {Req.Test, __MODULE__})
+    assert {:error, %Cloudflareq.Error{} = error} =
+             Cloudflareq.verify_token("bad-token", plug: {Req.Test, __MODULE__}, retry: false)
 
-    assert message =~ "Invalid API Token"
+    assert [%Cloudflareq.ErrorData{code: 1000, message: "Invalid API Token"}] = error.errors
   end
 
   test "verify_token! raises on API error" do
@@ -56,8 +56,8 @@ defmodule CloudflareqTest do
       })
     end)
 
-    assert_raise RuntimeError, ~r/Invalid API Token/, fn ->
-      Cloudflareq.verify_token!("bad-token", plug: {Req.Test, __MODULE__})
+    assert_raise Cloudflareq.Error, fn ->
+      Cloudflareq.verify_token!("bad-token", plug: {Req.Test, __MODULE__}, retry: false)
     end
   end
 
@@ -75,7 +75,7 @@ defmodule CloudflareqTest do
     end)
 
     assert {:error, %Cloudflareq.TokenError{status: "disabled"}} =
-             Cloudflareq.verify_token("test-token", plug: {Req.Test, __MODULE__})
+             Cloudflareq.verify_token("test-token", plug: {Req.Test, __MODULE__}, retry: false)
   end
 
   test "verify_token returns {:error, %TokenError{}} when token is expired" do
@@ -92,7 +92,7 @@ defmodule CloudflareqTest do
     end)
 
     assert {:error, %Cloudflareq.TokenError{status: "expired"}} =
-             Cloudflareq.verify_token("test-token", plug: {Req.Test, __MODULE__})
+             Cloudflareq.verify_token("test-token", plug: {Req.Test, __MODULE__}, retry: false)
   end
 
   test "verify_token! raises TokenError when token is disabled" do
@@ -109,7 +109,7 @@ defmodule CloudflareqTest do
     end)
 
     assert_raise Cloudflareq.TokenError, "token is disabled", fn ->
-      Cloudflareq.verify_token!("test-token", plug: {Req.Test, __MODULE__})
+      Cloudflareq.verify_token!("test-token", plug: {Req.Test, __MODULE__}, retry: false)
     end
   end
 
@@ -129,7 +129,7 @@ defmodule CloudflareqTest do
       })
     end)
 
-    Cloudflareq.verify_token("test-token", plug: {Req.Test, __MODULE__})
+    Cloudflareq.verify_token("test-token", plug: {Req.Test, __MODULE__}, retry: false)
   end
 
   test "verify_token sets bearer token auth header" do
@@ -147,6 +147,6 @@ defmodule CloudflareqTest do
       })
     end)
 
-    Cloudflareq.verify_token("test-token", plug: {Req.Test, __MODULE__})
+    Cloudflareq.verify_token("test-token", plug: {Req.Test, __MODULE__}, retry: false)
   end
 end

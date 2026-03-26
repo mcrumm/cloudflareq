@@ -29,7 +29,8 @@ defmodule Cloudflareq.D1Test do
         cf_account_id: "test-account",
         cf_api_token: "test-token",
         database_id: "test-db-id",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, %Cloudflareq.D1.Result{} = result} = Cloudflareq.D1.query(req, "SELECT 1")
@@ -70,7 +71,8 @@ defmodule Cloudflareq.D1Test do
         cf_account_id: "test-account",
         cf_api_token: "test-token",
         database_id: "test-db-id",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, %Cloudflareq.D1.Result{rows: [%{"val" => "42"}]}} =
@@ -94,10 +96,11 @@ defmodule Cloudflareq.D1Test do
         cf_account_id: "test-account",
         cf_api_token: "test-token",
         database_id: "test-db-id",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
-    assert {:error, [%Cloudflareq.Error{code: 7500, message: "query error: syntax error"}]} =
+    assert {:error, %Cloudflareq.Error{errors: [%Cloudflareq.ErrorData{code: 7500, message: "query error: syntax error"}]}} =
              Cloudflareq.D1.query(req, "INVALID SQL")
   end
 
@@ -118,10 +121,11 @@ defmodule Cloudflareq.D1Test do
         cf_account_id: "test-account",
         cf_api_token: "test-token",
         database_id: "test-db-id",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
-    assert_raise RuntimeError, ~r/D1 query failed/, fn ->
+    assert_raise Cloudflareq.Error, fn ->
       Cloudflareq.D1.query!(req, "INVALID SQL")
     end
   end
@@ -176,7 +180,8 @@ defmodule Cloudflareq.D1Test do
         cf_account_id: "test-account",
         cf_api_token: "test-token",
         database_id: "test-db-id",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, [%Cloudflareq.D1.Result{} = r1, %Cloudflareq.D1.Result{} = r2]} =
@@ -222,7 +227,8 @@ defmodule Cloudflareq.D1Test do
         cf_account_id: "test-account",
         cf_api_token: "test-token",
         database_id: "test-db-id",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, %Cloudflareq.D1.Result{} = result} =
@@ -251,7 +257,8 @@ defmodule Cloudflareq.D1Test do
       Cloudflareq.D1.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, [%Cloudflareq.Database{} = db1, %Cloudflareq.Database{} = db2]} =
@@ -282,7 +289,8 @@ defmodule Cloudflareq.D1Test do
       Cloudflareq.D1.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, %Cloudflareq.Database{} = db} = Cloudflareq.D1.create_database(req, "my-new-db")
@@ -308,7 +316,8 @@ defmodule Cloudflareq.D1Test do
       Cloudflareq.D1.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, %Cloudflareq.Database{} = db} = Cloudflareq.D1.get_database(req, "some-db-id")
@@ -334,7 +343,8 @@ defmodule Cloudflareq.D1Test do
       Cloudflareq.D1.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert :ok = Cloudflareq.D1.delete_database(req, "doomed-db")
@@ -364,7 +374,8 @@ defmodule Cloudflareq.D1Test do
     end)
 
     req =
-      Req.new(plug: {Req.Test, __MODULE__})
+      Req.new(plug: {Req.Test, __MODULE__},
+        retry: false)
       |> Cloudflareq.D1.attach(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
@@ -404,7 +415,8 @@ defmodule Cloudflareq.D1Test do
         cf_account_id: "test-account",
         cf_api_token: "test-token",
         database_id: "test-db-id",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     Cloudflareq.D1.query(req, "SELECT 1")
@@ -438,7 +450,8 @@ defmodule Cloudflareq.D1Test do
       Cloudflareq.D1.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     databases = Cloudflareq.D1.stream_databases(req, per_page: 1) |> Enum.to_list()
@@ -462,7 +475,8 @@ defmodule Cloudflareq.D1Test do
       Cloudflareq.D1.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert [%Cloudflareq.Database{name: "only"}] = Cloudflareq.D1.stream_databases(req) |> Enum.to_list()
@@ -500,10 +514,11 @@ defmodule Cloudflareq.D1Test do
       Cloudflareq.D1.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     results = Cloudflareq.D1.stream_databases(req, per_page: 1) |> Enum.to_list()
-    assert [%Cloudflareq.Database{name: "first"}, {:error, [%Cloudflareq.Error{}]}] = results
+    assert [%Cloudflareq.Database{name: "first"}, {:error, %Cloudflareq.Error{}}] = results
   end
 end

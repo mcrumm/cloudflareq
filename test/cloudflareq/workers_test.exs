@@ -34,7 +34,8 @@ defmodule Cloudflareq.WorkersTest do
       Cloudflareq.Workers.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, [%Cloudflareq.Workers.Script{} = s1, %Cloudflareq.Workers.Script{} = s2]} =
@@ -61,7 +62,8 @@ defmodule Cloudflareq.WorkersTest do
       Cloudflareq.Workers.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, content} = Cloudflareq.Workers.get_script_content(req, "my-worker")
@@ -85,7 +87,8 @@ defmodule Cloudflareq.WorkersTest do
       Cloudflareq.Workers.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     script_content = "export default { fetch() { return new Response('hello') } }"
@@ -114,7 +117,8 @@ defmodule Cloudflareq.WorkersTest do
       Cloudflareq.Workers.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, %Cloudflareq.Workers.Script{id: "my-worker"}} =
@@ -138,7 +142,8 @@ defmodule Cloudflareq.WorkersTest do
       Cloudflareq.Workers.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert :ok = Cloudflareq.Workers.delete_script(req, "my-worker")
@@ -161,7 +166,8 @@ defmodule Cloudflareq.WorkersTest do
       Cloudflareq.Workers.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert :ok = Cloudflareq.Workers.delete_script(req, "my-worker", force: true)
@@ -183,10 +189,11 @@ defmodule Cloudflareq.WorkersTest do
       Cloudflareq.Workers.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
-    assert {:error, [%Cloudflareq.Error{code: 10007, message: "script not found"}]} =
+    assert {:error, %Cloudflareq.Error{errors: [%Cloudflareq.ErrorData{code: 10007, message: "script not found"}]}} =
              Cloudflareq.Workers.list_scripts(req)
   end
 
@@ -206,7 +213,8 @@ defmodule Cloudflareq.WorkersTest do
       Cloudflareq.Workers.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     Cloudflareq.Workers.list_scripts(req)
@@ -223,7 +231,8 @@ defmodule Cloudflareq.WorkersTest do
     end)
 
     req =
-      Req.new(plug: {Req.Test, __MODULE__})
+      Req.new(plug: {Req.Test, __MODULE__},
+        retry: false)
       |> Cloudflareq.Workers.attach(cf_account_id: "test-account", cf_api_token: "test-token")
 
     assert {:ok, [%Cloudflareq.Workers.Script{id: "my-worker"}]} = Cloudflareq.Workers.list_scripts(req)
@@ -258,7 +267,8 @@ defmodule Cloudflareq.WorkersTest do
       Cloudflareq.Workers.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     scripts = Cloudflareq.Workers.stream_scripts(req, per_page: 1) |> Enum.to_list()
@@ -280,7 +290,8 @@ defmodule Cloudflareq.WorkersTest do
       Cloudflareq.Workers.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert [%Cloudflareq.Workers.Script{id: "my-worker"}] =
@@ -317,10 +328,11 @@ defmodule Cloudflareq.WorkersTest do
       Cloudflareq.Workers.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     results = Cloudflareq.Workers.stream_scripts(req, per_page: 1) |> Enum.to_list()
-    assert [%Cloudflareq.Workers.Script{}, {:error, [%Cloudflareq.Error{}]}] = results
+    assert [%Cloudflareq.Workers.Script{}, {:error, %Cloudflareq.Error{}}] = results
   end
 end

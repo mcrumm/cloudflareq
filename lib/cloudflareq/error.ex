@@ -1,22 +1,22 @@
 defmodule Cloudflareq.Error do
-  defstruct [:code, :message]
+  @moduledoc """
+  An exception representing a Cloudflare API error response.
+
+  ## Fields
+
+    * `:errors` - a list of `Cloudflareq.ErrorData` structs from the API response.
+    * `:headers` - the HTTP response headers from the error response.
+  """
+
+  defexception errors: [], headers: %{}
 
   @type t :: %__MODULE__{
-          code: integer() | nil,
-          message: String.t() | nil
+          errors: [Cloudflareq.ErrorData.t(), ...],
+          headers: %{optional(String.t()) => [String.t()]}
         }
 
-  def new(%{"code" => code, "message" => message}) do
-    %__MODULE__{code: code, message: message}
-  end
-
-  def new(%{} = map) do
-    %__MODULE__{code: map["code"], message: map["message"]}
-  end
-
-  defimpl String.Chars do
-    def to_string(%Cloudflareq.Error{code: code, message: message}) do
-      "[#{code}] #{message}"
-    end
+  @impl true
+  def message(%__MODULE__{errors: errors}) do
+    Enum.map_join(errors, "; ", &Exception.message/1)
   end
 end

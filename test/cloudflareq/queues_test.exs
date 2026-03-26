@@ -49,7 +49,8 @@ defmodule Cloudflareq.QueuesTest do
       Cloudflareq.Queues.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, [%Cloudflareq.Queues.Queue{} = q]} = Cloudflareq.Queues.list_queues(req)
@@ -77,7 +78,8 @@ defmodule Cloudflareq.QueuesTest do
       Cloudflareq.Queues.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, %Cloudflareq.Queues.Queue{queue_name: "new-queue"}} =
@@ -101,7 +103,8 @@ defmodule Cloudflareq.QueuesTest do
       Cloudflareq.Queues.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, %Cloudflareq.Queues.Queue{queue_id: "q-1"}} = Cloudflareq.Queues.get_queue(req, "q-1")
@@ -127,7 +130,8 @@ defmodule Cloudflareq.QueuesTest do
       Cloudflareq.Queues.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, %Cloudflareq.Queues.Queue{queue_name: "renamed-queue"}} =
@@ -151,7 +155,8 @@ defmodule Cloudflareq.QueuesTest do
       Cloudflareq.Queues.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert :ok = Cloudflareq.Queues.delete_queue(req, "q-1")
@@ -176,7 +181,8 @@ defmodule Cloudflareq.QueuesTest do
       Cloudflareq.Queues.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, [%Cloudflareq.Queues.Consumer{} = c]} = Cloudflareq.Queues.list_consumers(req, "q-1")
@@ -206,7 +212,8 @@ defmodule Cloudflareq.QueuesTest do
       Cloudflareq.Queues.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, %Cloudflareq.Queues.Consumer{type: "http_pull"}} =
@@ -230,7 +237,8 @@ defmodule Cloudflareq.QueuesTest do
       Cloudflareq.Queues.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, %Cloudflareq.Queues.Consumer{}} =
@@ -254,7 +262,8 @@ defmodule Cloudflareq.QueuesTest do
       Cloudflareq.Queues.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert :ok = Cloudflareq.Queues.delete_consumer(req, "q-1", "c-1")
@@ -284,7 +293,8 @@ defmodule Cloudflareq.QueuesTest do
       Cloudflareq.Queues.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert :ok = Cloudflareq.Queues.send_message(req, "q-1", "hello", content_type: "text")
@@ -310,7 +320,8 @@ defmodule Cloudflareq.QueuesTest do
       Cloudflareq.Queues.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     messages = [
@@ -347,7 +358,8 @@ defmodule Cloudflareq.QueuesTest do
       Cloudflareq.Queues.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, %{messages: messages, message_backlog_count: 10}} =
@@ -386,7 +398,8 @@ defmodule Cloudflareq.QueuesTest do
       Cloudflareq.Queues.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert {:ok, %Cloudflareq.Queues.AckResult{} = result} =
@@ -417,10 +430,11 @@ defmodule Cloudflareq.QueuesTest do
       Cloudflareq.Queues.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
-    assert {:error, [%Cloudflareq.Error{code: 1001, message: "queue not found"}]} =
+    assert {:error, %Cloudflareq.Error{errors: [%Cloudflareq.ErrorData{code: 1001, message: "queue not found"}]}} =
              Cloudflareq.Queues.get_queue(req, "nonexistent")
   end
 
@@ -440,7 +454,8 @@ defmodule Cloudflareq.QueuesTest do
       Cloudflareq.Queues.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     Cloudflareq.Queues.list_queues(req)
@@ -457,7 +472,8 @@ defmodule Cloudflareq.QueuesTest do
     end)
 
     req =
-      Req.new(plug: {Req.Test, __MODULE__})
+      Req.new(plug: {Req.Test, __MODULE__},
+        retry: false)
       |> Cloudflareq.Queues.attach(cf_account_id: "test-account", cf_api_token: "test-token")
 
     assert {:ok, [%Cloudflareq.Queues.Queue{queue_name: "my-queue"}]} = Cloudflareq.Queues.list_queues(req)
@@ -492,7 +508,8 @@ defmodule Cloudflareq.QueuesTest do
       Cloudflareq.Queues.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     queues = Cloudflareq.Queues.stream_queues(req, per_page: 1) |> Enum.to_list()
@@ -514,7 +531,8 @@ defmodule Cloudflareq.QueuesTest do
       Cloudflareq.Queues.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     assert [%Cloudflareq.Queues.Queue{queue_name: "my-queue"}] =
@@ -551,11 +569,12 @@ defmodule Cloudflareq.QueuesTest do
       Cloudflareq.Queues.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     results = Cloudflareq.Queues.stream_queues(req, per_page: 1) |> Enum.to_list()
-    assert [%Cloudflareq.Queues.Queue{}, {:error, [%Cloudflareq.Error{}]}] = results
+    assert [%Cloudflareq.Queues.Queue{}, {:error, %Cloudflareq.Error{}}] = results
   end
 
   test "stream_consumers streams across multiple pages" do
@@ -587,7 +606,8 @@ defmodule Cloudflareq.QueuesTest do
       Cloudflareq.Queues.new(
         cf_account_id: "test-account",
         cf_api_token: "test-token",
-        plug: {Req.Test, __MODULE__}
+        plug: {Req.Test, __MODULE__},
+        retry: false
       )
 
     consumers = Cloudflareq.Queues.stream_consumers(req, "q-1", per_page: 1) |> Enum.to_list()
