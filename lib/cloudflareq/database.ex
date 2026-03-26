@@ -7,7 +7,7 @@ defmodule Cloudflareq.Database do
     * `:uuid` - the database identifier.
     * `:name` - the database name.
     * `:version` - the database version, e.g. `"production"`.
-    * `:created_at` - ISO8601 timestamp of when the database was created.
+    * `:created_at` - when the database was created.
     * `:jurisdiction` - the data location jurisdiction, e.g. `"eu"` or `"fedramp"`.
   """
 
@@ -17,7 +17,7 @@ defmodule Cloudflareq.Database do
           uuid: String.t() | nil,
           name: String.t() | nil,
           version: String.t() | nil,
-          created_at: String.t() | nil,
+          created_at: DateTime.t() | nil,
           jurisdiction: String.t() | nil
         }
 
@@ -27,7 +27,7 @@ defmodule Cloudflareq.Database do
       uuid: map["uuid"],
       name: map["name"],
       version: map["version"],
-      created_at: map["created_at"],
+      created_at: Cloudflareq.parse_datetime(map["created_at"]),
       jurisdiction: map["jurisdiction"]
     }
   end

@@ -9,7 +9,7 @@ defmodule Cloudflareq.Queues.Consumer do
     * `:script_name` - the Worker script name (for worker type consumers).
     * `:queue_name` - the queue name.
     * `:dead_letter_queue` - the dead letter queue name, if configured.
-    * `:created_on` - ISO8601 timestamp of when the consumer was created.
+    * `:created_on` - when the consumer was created.
     * `:settings` - consumer settings map. Keys vary by type:
       for workers: `:batch_size`, `:max_concurrency`, `:max_retries`,
       `:max_wait_time_ms`, `:retry_delay`;
@@ -33,7 +33,7 @@ defmodule Cloudflareq.Queues.Consumer do
           script_name: String.t() | nil,
           queue_name: String.t() | nil,
           dead_letter_queue: String.t() | nil,
-          created_on: String.t() | nil,
+          created_on: DateTime.t() | nil,
           settings: map() | nil
         }
 
@@ -45,7 +45,7 @@ defmodule Cloudflareq.Queues.Consumer do
       script_name: map["script_name"],
       queue_name: map["queue_name"],
       dead_letter_queue: map["dead_letter_queue"],
-      created_on: map["created_on"],
+      created_on: Cloudflareq.parse_datetime(map["created_on"]),
       settings: normalize_settings(map["settings"])
     }
   end

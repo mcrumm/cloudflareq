@@ -6,8 +6,8 @@ defmodule Cloudflareq.Token do
 
     * `:id` - the token ID.
     * `:status` - the token status, e.g. `"active"`.
-    * `:not_before` - ISO8601 timestamp of when the token becomes valid.
-    * `:expires_on` - ISO8601 timestamp of when the token expires.
+    * `:not_before` - when the token becomes valid.
+    * `:expires_on` - when the token expires.
   """
 
   defstruct [:id, :status, :not_before, :expires_on]
@@ -15,8 +15,8 @@ defmodule Cloudflareq.Token do
   @type t :: %__MODULE__{
           id: String.t() | nil,
           status: String.t() | nil,
-          not_before: String.t() | nil,
-          expires_on: String.t() | nil
+          not_before: DateTime.t() | nil,
+          expires_on: DateTime.t() | nil
         }
 
   @doc false
@@ -24,8 +24,8 @@ defmodule Cloudflareq.Token do
     %__MODULE__{
       id: map["id"],
       status: map["status"],
-      not_before: map["not_before"],
-      expires_on: map["expires_on"]
+      not_before: Cloudflareq.parse_datetime(map["not_before"]),
+      expires_on: Cloudflareq.parse_datetime(map["expires_on"])
     }
   end
 end

@@ -6,8 +6,8 @@ defmodule Cloudflareq.Queues.Queue do
 
     * `:queue_id` - the queue identifier.
     * `:queue_name` - the queue name.
-    * `:created_on` - ISO8601 timestamp of when the queue was created.
-    * `:modified_on` - ISO8601 timestamp of when the queue was last modified.
+    * `:created_on` - when the queue was created.
+    * `:modified_on` - when the queue was last modified.
     * `:consumers_total_count` - total number of consumers.
     * `:producers_total_count` - total number of producers.
     * `:settings` - queue settings map with keys `:delivery_delay`,
@@ -27,8 +27,8 @@ defmodule Cloudflareq.Queues.Queue do
   @type t :: %__MODULE__{
           queue_id: String.t() | nil,
           queue_name: String.t() | nil,
-          created_on: String.t() | nil,
-          modified_on: String.t() | nil,
+          created_on: DateTime.t() | nil,
+          modified_on: DateTime.t() | nil,
           consumers_total_count: integer() | nil,
           producers_total_count: integer() | nil,
           settings: map() | nil
@@ -39,8 +39,8 @@ defmodule Cloudflareq.Queues.Queue do
     %__MODULE__{
       queue_id: map["queue_id"],
       queue_name: map["queue_name"],
-      created_on: map["created_on"],
-      modified_on: map["modified_on"],
+      created_on: Cloudflareq.parse_datetime(map["created_on"]),
+      modified_on: Cloudflareq.parse_datetime(map["modified_on"]),
       consumers_total_count: map["consumers_total_count"],
       producers_total_count: map["producers_total_count"],
       settings: normalize_settings(map["settings"])

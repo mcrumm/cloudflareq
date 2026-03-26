@@ -22,8 +22,8 @@ defmodule CloudflareqTest do
     assert %Cloudflareq.Token{} = token
     assert token.id == "token-id-123"
     assert token.status == "active"
-    assert token.not_before == "2024-01-01T00:00:00Z"
-    assert token.expires_on == "2025-01-01T00:00:00Z"
+    assert token.not_before == ~U[2024-01-01 00:00:00Z]
+    assert token.expires_on == ~U[2025-01-01 00:00:00Z]
   end
 
   test "verify_token returns {:error, %Cloudflareq.Error{}} on API failure" do

@@ -65,7 +65,7 @@ defmodule Cloudflareq.R2Test do
 
     assert {:ok, %Cloudflareq.R2.Bucket{} = bucket} = Cloudflareq.R2.create_bucket(req, "my-new-bucket")
     assert bucket.name == "my-new-bucket"
-    assert bucket.creation_date == "2024-03-01T00:00:00Z"
+    assert bucket.creation_date == ~U[2024-03-01 00:00:00Z]
     assert bucket.location == "WNAM"
   end
 

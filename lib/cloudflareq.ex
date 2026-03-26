@@ -120,6 +120,14 @@ defmodule Cloudflareq do
   end
 
   @doc false
+  def parse_datetime(nil), do: nil
+
+  def parse_datetime(value) when is_binary(value) do
+    {:ok, datetime, _offset} = DateTime.from_iso8601(value)
+    datetime
+  end
+
+  @doc false
   def unwrap_response(%{"success" => true, "result" => result}) do
     {:ok, result}
   end

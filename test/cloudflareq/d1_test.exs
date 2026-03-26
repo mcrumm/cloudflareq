@@ -266,7 +266,7 @@ defmodule Cloudflareq.D1Test do
 
     assert db1.uuid == "db-1"
     assert db1.name == "my-db"
-    assert db1.created_at == "2024-01-01T00:00:00Z"
+    assert db1.created_at == ~U[2024-01-01 00:00:00Z]
     assert db1.jurisdiction == "eu"
     assert db2.uuid == "db-2"
   end

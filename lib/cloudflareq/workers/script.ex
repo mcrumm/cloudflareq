@@ -12,8 +12,8 @@ defmodule Cloudflareq.Workers.Script do
     * `:usage_model` - the usage model, e.g. `"standard"`.
     * `:compatibility_date` - the compatibility date string.
     * `:compatibility_flags` - list of compatibility flags.
-    * `:created_on` - ISO8601 timestamp of when the script was created.
-    * `:modified_on` - ISO8601 timestamp of when the script was last modified.
+    * `:created_on` - when the script was created.
+    * `:modified_on` - when the script was last modified.
     * `:last_deployed_from` - where the script was last deployed from.
     * `:logpush` - whether logpush is enabled.
     * `:startup_time_ms` - startup time in milliseconds.
@@ -44,8 +44,8 @@ defmodule Cloudflareq.Workers.Script do
           usage_model: String.t() | nil,
           compatibility_date: String.t() | nil,
           compatibility_flags: [String.t()] | nil,
-          created_on: String.t() | nil,
-          modified_on: String.t() | nil,
+          created_on: DateTime.t() | nil,
+          modified_on: DateTime.t() | nil,
           last_deployed_from: String.t() | nil,
           logpush: boolean() | nil,
           startup_time_ms: number() | nil
@@ -62,8 +62,8 @@ defmodule Cloudflareq.Workers.Script do
       usage_model: map["usage_model"],
       compatibility_date: map["compatibility_date"],
       compatibility_flags: map["compatibility_flags"],
-      created_on: map["created_on"],
-      modified_on: map["modified_on"],
+      created_on: Cloudflareq.parse_datetime(map["created_on"]),
+      modified_on: Cloudflareq.parse_datetime(map["modified_on"]),
       last_deployed_from: map["last_deployed_from"],
       logpush: map["logpush"],
       startup_time_ms: map["startup_time_ms"]
