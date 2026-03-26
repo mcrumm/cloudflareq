@@ -36,6 +36,62 @@ defmodule Cloudflareq do
   end
 
   @doc """
+  Verifies a Cloudflare API token is valid and active.
+
+  Issues a GET request to `https://api.cloudflare.com/client/v4/user/tokens/verify`.
+
+  Returns `{:ok, %Cloudflareq.Token{}}` when the token is active, or
+  `{:error, exception}` on failure.
+
+  ## Examples
+
+      {:ok, %Cloudflareq.Token{status: "active"}} = Cloudflareq.verify_token("my-token")
+
+  """
+  @spec verify_token(String.t(), keyword()) :: {:ok, Cloudflareq.Token.t()} | {:error, Exception.t()}
+  def verify_token(api_token, opts \\ []) when is_binary(api_token) do
+    url = @base_url <> "/user/tokens/verify"
+
+    case Req.request([method: :get, url: url, auth: {:bearer, api_token}] ++ opts) do
+      {:ok, %Req.Response{body: body}} when is_map(body) ->
+        case unwrap_response(body) do
+          {:ok, result} ->
+            token = Cloudflareq.Token.new(result)
+
+            case token.status do
+              "active" -> {:ok, token}
+              status when status in ["disabled", "expired"] -> {:error, %Cloudflareq.TokenError{status: status}}
+            end
+
+          {:error, errors} ->
+            message = Enum.map_join(errors, ", ", &to_string/1)
+            {:error, RuntimeError.exception(message)}
+        end
+
+      {:error, exception} ->
+        {:error, exception}
+    end
+  end
+
+  @doc """
+  Bang variant of `verify_token/1`.
+
+  Returns the `%Cloudflareq.Token{}` directly on success, or raises on error.
+
+  ## Examples
+
+      %Cloudflareq.Token{status: "active"} = Cloudflareq.verify_token!("my-token")
+
+  """
+  @spec verify_token!(String.t(), keyword()) :: Cloudflareq.Token.t()
+  def verify_token!(api_token, opts \\ []) when is_binary(api_token) do
+    case verify_token(api_token, opts) do
+      {:ok, token} -> token
+      {:error, exception} -> raise exception
+    end
+  end
+
+  @doc """
   Unwraps a Cloudflare API response body.
 
   Returns `{:ok, result}` on success or `{:error, errors}` with a list of

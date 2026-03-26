@@ -466,6 +466,43 @@ defmodule Cloudflareq.R2Test do
     assert url =~ "X-Amz-Algorithm"
   end
 
+  test "presign_url/4 reads credentials from s3-configured request" do
+    req =
+      Cloudflareq.R2.new(
+        cf_account_id: "test-account",
+        cf_api_token: "test-token"
+      )
+
+    s3 = Cloudflareq.R2.s3(req, access_key_id: "s3-key", secret_access_key: "s3-secret")
+
+    url = Cloudflareq.R2.presign_url(s3, "my-bucket", "photo.jpg")
+
+    assert url =~ "test-account.r2.cloudflarestorage.com"
+    assert url =~ "my-bucket"
+    assert url =~ "photo.jpg"
+    assert url =~ "X-Amz-Algorithm"
+    assert url =~ "s3-key"
+  end
+
+  test "presign_url/4 explicit opts override s3 request credentials" do
+    req =
+      Cloudflareq.R2.new(
+        cf_account_id: "test-account",
+        cf_api_token: "test-token"
+      )
+
+    s3 = Cloudflareq.R2.s3(req, access_key_id: "s3-key", secret_access_key: "s3-secret")
+
+    url =
+      Cloudflareq.R2.presign_url(s3, "my-bucket", "photo.jpg",
+        access_key_id: "override-key",
+        secret_access_key: "override-secret"
+      )
+
+    assert url =~ "override-key"
+    refute url =~ "s3-key"
+  end
+
   test "presign_form/4 generates presigned form with R2 endpoint" do
     req =
       Cloudflareq.R2.new(
@@ -483,6 +520,46 @@ defmodule Cloudflareq.R2Test do
     assert url =~ "test-account.r2.cloudflarestorage.com"
     assert url =~ "my-bucket"
     assert is_list(fields)
+  end
+
+  test "presign_form/4 reads credentials from s3-configured request" do
+    req =
+      Cloudflareq.R2.new(
+        cf_account_id: "test-account",
+        cf_api_token: "test-token"
+      )
+
+    s3 = Cloudflareq.R2.s3(req, access_key_id: "s3-key", secret_access_key: "s3-secret")
+
+    form = Cloudflareq.R2.presign_form(s3, "my-bucket", "uploads/photo.jpg")
+
+    assert %{url: url, fields: fields} = form
+    assert url =~ "test-account.r2.cloudflarestorage.com"
+    assert url =~ "my-bucket"
+    assert is_list(fields)
+    assert Enum.any?(fields, fn {k, _v} -> k == "x-amz-credential" end)
+  end
+
+  test "presign_form/4 explicit opts override s3 request credentials" do
+    req =
+      Cloudflareq.R2.new(
+        cf_account_id: "test-account",
+        cf_api_token: "test-token"
+      )
+
+    s3 = Cloudflareq.R2.s3(req, access_key_id: "s3-key", secret_access_key: "s3-secret")
+
+    form =
+      Cloudflareq.R2.presign_form(s3, "my-bucket", "uploads/photo.jpg",
+        access_key_id: "override-key",
+        secret_access_key: "override-secret"
+      )
+
+    assert %{fields: fields} = form
+    credential_field = Enum.find(fields, fn {k, _} -> k == "x-amz-credential" end)
+    assert {_, credential_value} = credential_field
+    assert credential_value =~ "override-key"
+    refute credential_value =~ "s3-key"
   end
 
   test "stream_buckets streams all items across multiple pages" do
@@ -586,5 +663,160 @@ defmodule Cloudflareq.R2Test do
 
     results = Cloudflareq.R2.stream_buckets(req) |> Enum.to_list()
     assert [%Cloudflareq.R2.Bucket{name: "a"}, {:error, [%Cloudflareq.Error{}]}] = results
+  end
+
+  test "list_event_notification_rules returns configuration" do
+    Req.Test.stub(__MODULE__, fn conn ->
+      assert conn.method == "GET"
+      assert conn.request_path =~ "/event_notifications/r2/my-bucket/configuration"
+
+      Req.Test.json(conn, %{
+        "success" => true,
+        "errors" => [],
+        "messages" => [],
+        "result" => %{
+          "queues" => %{
+            "queue-1" => [
+              %{"actions" => ["PutObject"], "prefix" => "images/", "suffix" => ".png"}
+            ]
+          }
+        }
+      })
+    end)
+
+    req =
+      Cloudflareq.R2.new(
+        cf_account_id: "test-account",
+        cf_api_token: "test-token",
+        plug: {Req.Test, __MODULE__}
+      )
+
+    assert {:ok, %{"queues" => queues}} =
+             Cloudflareq.R2.list_event_notification_rules(req, "my-bucket")
+
+    assert [rule] = queues["queue-1"]
+    assert rule["actions"] == ["PutObject"]
+    assert rule["prefix"] == "images/"
+  end
+
+  test "list_event_notification_rules returns error on failure" do
+    Req.Test.stub(__MODULE__, fn conn ->
+      conn
+      |> Plug.Conn.put_status(404)
+      |> Req.Test.json(%{
+        "success" => false,
+        "errors" => [%{"code" => 10006, "message" => "bucket not found"}],
+        "messages" => [],
+        "result" => nil
+      })
+    end)
+
+    req =
+      Cloudflareq.R2.new(
+        cf_account_id: "test-account",
+        cf_api_token: "test-token",
+        plug: {Req.Test, __MODULE__}
+      )
+
+    assert {:error, [%Cloudflareq.Error{code: 10006, message: "bucket not found"}]} =
+             Cloudflareq.R2.list_event_notification_rules(req, "nonexistent")
+  end
+
+  test "put_event_notification_rule creates a rule" do
+    Req.Test.stub(__MODULE__, fn conn ->
+      assert conn.method == "PUT"
+      assert conn.request_path =~ "/event_notifications/r2/my-bucket/configuration/queues/queue-1"
+      {:ok, body, conn} = Plug.Conn.read_body(conn)
+      decoded = Jason.decode!(body)
+      assert [%{"actions" => ["PutObject"], "prefix" => "images/"}] = decoded["rules"]
+
+      Req.Test.json(conn, %{
+        "success" => true,
+        "errors" => [],
+        "messages" => [],
+        "result" => %{}
+      })
+    end)
+
+    req =
+      Cloudflareq.R2.new(
+        cf_account_id: "test-account",
+        cf_api_token: "test-token",
+        plug: {Req.Test, __MODULE__}
+      )
+
+    rules = [%{"actions" => ["PutObject"], "prefix" => "images/"}]
+
+    assert {:ok, _} =
+             Cloudflareq.R2.put_event_notification_rule(req, "my-bucket", "queue-1", rules)
+  end
+
+  test "put_event_notification_rule returns error on failure" do
+    Req.Test.stub(__MODULE__, fn conn ->
+      conn
+      |> Plug.Conn.put_status(400)
+      |> Req.Test.json(%{
+        "success" => false,
+        "errors" => [%{"code" => 10000, "message" => "invalid rule"}],
+        "messages" => [],
+        "result" => nil
+      })
+    end)
+
+    req =
+      Cloudflareq.R2.new(
+        cf_account_id: "test-account",
+        cf_api_token: "test-token",
+        plug: {Req.Test, __MODULE__}
+      )
+
+    assert {:error, [%Cloudflareq.Error{code: 10000, message: "invalid rule"}]} =
+             Cloudflareq.R2.put_event_notification_rule(req, "my-bucket", "queue-1", [%{"actions" => ["BadAction"]}])
+  end
+
+  test "delete_event_notification_rule deletes a rule" do
+    Req.Test.stub(__MODULE__, fn conn ->
+      assert conn.method == "DELETE"
+      assert conn.request_path =~ "/event_notifications/r2/my-bucket/configuration/queues/queue-1"
+
+      Req.Test.json(conn, %{
+        "success" => true,
+        "errors" => [],
+        "messages" => [],
+        "result" => nil
+      })
+    end)
+
+    req =
+      Cloudflareq.R2.new(
+        cf_account_id: "test-account",
+        cf_api_token: "test-token",
+        plug: {Req.Test, __MODULE__}
+      )
+
+    assert :ok = Cloudflareq.R2.delete_event_notification_rule(req, "my-bucket", "queue-1")
+  end
+
+  test "delete_event_notification_rule returns error on failure" do
+    Req.Test.stub(__MODULE__, fn conn ->
+      conn
+      |> Plug.Conn.put_status(404)
+      |> Req.Test.json(%{
+        "success" => false,
+        "errors" => [%{"code" => 10006, "message" => "queue not found"}],
+        "messages" => [],
+        "result" => nil
+      })
+    end)
+
+    req =
+      Cloudflareq.R2.new(
+        cf_account_id: "test-account",
+        cf_api_token: "test-token",
+        plug: {Req.Test, __MODULE__}
+      )
+
+    assert {:error, [%Cloudflareq.Error{code: 10006, message: "queue not found"}]} =
+             Cloudflareq.R2.delete_event_notification_rule(req, "my-bucket", "nonexistent")
   end
 end

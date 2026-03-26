@@ -284,6 +284,75 @@ defmodule Cloudflareq.R2 do
   end
 
   @doc """
+  Lists all event notification rules for an R2 bucket.
+
+  Returns `{:ok, result}` with the notification configuration map,
+  or `{:error, reason}`.
+
+  ## Examples
+
+      {:ok, config} = Cloudflareq.R2.list_event_notification_rules(req, "my-bucket")
+  """
+  def list_event_notification_rules(req, bucket_name, opts \\ []) do
+    opts = Keyword.merge(opts, r2_operation: {:list_event_notification_rules, bucket_name})
+
+    case Req.request(req, opts) do
+      {:ok, %Req.Response{body: {:error, _} = error}} -> error
+      {:ok, %Req.Response{body: body}} -> {:ok, body}
+      {:error, exception} -> {:error, exception}
+    end
+  end
+
+  @doc """
+  Creates or updates an event notification rule for an R2 bucket on the given queue.
+
+  `rules` is a list of rule maps (each with keys like `"prefix"`, `"suffix"`, `"actions"`, etc).
+  The JSON body sent to the API is `%{"rules" => rules}`.
+
+  Returns `{:ok, result}` or `{:error, reason}`.
+
+  ## Examples
+
+      rules = [%{"actions" => ["PutObject"], "prefix" => "images/"}]
+      {:ok, _} = Cloudflareq.R2.put_event_notification_rule(req, "my-bucket", "queue-id", rules)
+  """
+  def put_event_notification_rule(req, bucket_name, queue_id, rules, opts \\ [])
+      when is_list(rules) do
+    opts =
+      Keyword.merge(opts,
+        r2_operation: {:put_event_notification_rule, bucket_name, queue_id, rules}
+      )
+
+    case Req.request(req, opts) do
+      {:ok, %Req.Response{body: {:error, _} = error}} -> error
+      {:ok, %Req.Response{body: body}} -> {:ok, body}
+      {:error, exception} -> {:error, exception}
+    end
+  end
+
+  @doc """
+  Deletes an event notification rule for an R2 bucket on the given queue.
+
+  Returns `:ok` on success, or `{:error, reason}`.
+
+  ## Examples
+
+      :ok = Cloudflareq.R2.delete_event_notification_rule(req, "my-bucket", "queue-id")
+  """
+  def delete_event_notification_rule(req, bucket_name, queue_id, opts \\ []) do
+    opts =
+      Keyword.merge(opts,
+        r2_operation: {:delete_event_notification_rule, bucket_name, queue_id}
+      )
+
+    case Req.request(req, opts) do
+      {:ok, %Req.Response{status: 200}} -> :ok
+      {:ok, %Req.Response{body: {:error, _} = error}} -> error
+      {:error, exception} -> {:error, exception}
+    end
+  end
+
+  @doc """
   Creates temporary S3-compatible credentials for R2 object operations.
 
   Returns `{:ok, %Cloudflareq.R2.TempCredentials{}}` or `{:error, reason}`.
@@ -400,6 +469,25 @@ defmodule Cloudflareq.R2 do
     Req.merge(req, method: :delete, url: r2_url(req, "/buckets/#{bucket_name}/cors"))
   end
 
+  defp configure_request(req, {:list_event_notification_rules, bucket_name}) do
+    Req.merge(req, method: :get, url: event_notifications_url(req, bucket_name, ""))
+  end
+
+  defp configure_request(req, {:put_event_notification_rule, bucket_name, queue_id, rules}) do
+    Req.merge(req,
+      method: :put,
+      url: event_notifications_url(req, bucket_name, "/queues/#{queue_id}"),
+      json: %{"rules" => rules}
+    )
+  end
+
+  defp configure_request(req, {:delete_event_notification_rule, bucket_name, queue_id}) do
+    Req.merge(req,
+      method: :delete,
+      url: event_notifications_url(req, bucket_name, "/queues/#{queue_id}")
+    )
+  end
+
   defp configure_request(req, {:create_temp_credentials, params}) do
     json = %{
       "bucket" => params[:bucket],
@@ -416,6 +504,11 @@ defmodule Cloudflareq.R2 do
   defp r2_url(req, path) do
     account_id = req.options[:cf_account_id] || raise "missing required option :cf_account_id"
     "#{Cloudflareq.base_url(account_id)}/r2#{path}"
+  end
+
+  defp event_notifications_url(req, bucket_name, path) do
+    account_id = req.options[:cf_account_id] || raise "missing required option :cf_account_id"
+    "#{Cloudflareq.base_url(account_id)}/event_notifications/r2/#{bucket_name}/configuration#{path}"
   end
 
   # -- Response step --
@@ -531,7 +624,10 @@ defmodule Cloudflareq.R2 do
     @doc """
     Generates a presigned URL for an R2 object.
 
-    The R2 S3 endpoint URL is automatically derived from the `cf_account_id`.
+    When called with an s3-configured request (via `s3/2`), credentials and
+    endpoint are read from the request automatically. Explicit opts always
+    take precedence.
+
     Wraps `ReqS3.presign_url/1`.
 
     ## Options
@@ -541,14 +637,34 @@ defmodule Cloudflareq.R2 do
 
     ## Examples
 
+        # With s3-configured request (credentials read from request)
+        s3 = Cloudflareq.R2.s3(req, access_key_id: "key", secret_access_key: "secret")
+        url = Cloudflareq.R2.presign_url(s3, "my-bucket", "photo.jpg")
+
+        # Still works with explicit credentials
         url = Cloudflareq.R2.presign_url(req, "my-bucket", "photo.jpg",
           access_key_id: "key",
           secret_access_key: "secret"
         )
     """
     def presign_url(%Req.Request{} = req, bucket, key, opts \\ []) do
-      account_id = req.options[:cf_account_id] || raise "missing required option :cf_account_id"
-      endpoint = "https://#{account_id}.r2.cloudflarestorage.com"
+      sigv4 = req.options[:aws_sigv4]
+
+      opts =
+        if sigv4 do
+          opts
+          |> Keyword.put_new(:access_key_id, sigv4[:access_key_id])
+          |> Keyword.put_new(:secret_access_key, sigv4[:secret_access_key])
+        else
+          opts
+        end
+
+      endpoint =
+        cond do
+          url = req.options[:aws_endpoint_url_s3] -> url
+          id = req.options[:cf_account_id] -> "https://#{id}.r2.cloudflarestorage.com"
+          true -> raise "missing :cf_account_id or :aws_endpoint_url_s3 on request"
+        end
 
       opts
       |> Keyword.merge(bucket: bucket, key: key)
@@ -559,7 +675,10 @@ defmodule Cloudflareq.R2 do
     @doc """
     Generates a presigned form for uploading to an R2 bucket.
 
-    The R2 S3 endpoint URL is automatically derived from the `cf_account_id`.
+    When called with an s3-configured request (via `s3/2`), credentials and
+    endpoint are read from the request automatically. Explicit opts always
+    take precedence.
+
     Wraps `ReqS3.presign_form/1`.
 
     ## Options
@@ -569,6 +688,11 @@ defmodule Cloudflareq.R2 do
 
     ## Examples
 
+        # With s3-configured request (credentials read from request)
+        s3 = Cloudflareq.R2.s3(req, access_key_id: "key", secret_access_key: "secret")
+        form = Cloudflareq.R2.presign_form(s3, "my-bucket", "uploads/photo.jpg")
+
+        # Still works with explicit credentials
         form = Cloudflareq.R2.presign_form(req, "my-bucket", "uploads/photo.jpg",
           access_key_id: "key",
           secret_access_key: "secret",
@@ -577,8 +701,23 @@ defmodule Cloudflareq.R2 do
         )
     """
     def presign_form(%Req.Request{} = req, bucket, key, opts \\ []) do
-      account_id = req.options[:cf_account_id] || raise "missing required option :cf_account_id"
-      endpoint = "https://#{account_id}.r2.cloudflarestorage.com"
+      sigv4 = req.options[:aws_sigv4]
+
+      opts =
+        if sigv4 do
+          opts
+          |> Keyword.put_new(:access_key_id, sigv4[:access_key_id])
+          |> Keyword.put_new(:secret_access_key, sigv4[:secret_access_key])
+        else
+          opts
+        end
+
+      endpoint =
+        cond do
+          url = req.options[:aws_endpoint_url_s3] -> url
+          id = req.options[:cf_account_id] -> "https://#{id}.r2.cloudflarestorage.com"
+          true -> raise "missing :cf_account_id or :aws_endpoint_url_s3 on request"
+        end
 
       opts
       |> Keyword.merge(bucket: bucket, key: key)
